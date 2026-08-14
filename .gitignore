@@ -14,7 +14,7 @@ src/**/*.d.ts
 !src/renderer/src/env.d.ts
 !src/renderer/src/mermaid.d.ts
 !src/types/build-constants.d.ts
-
+.dev-home/
 # Dependencies
 node_modules/
 

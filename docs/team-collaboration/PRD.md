@@ -1,6 +1,6 @@
 # Orca 团队协作功能 - 产品需求文档 (PRD)
 
-> 版本: v3.0 | 日期: 2026-08-13 | 状态: 终稿
+> 版本: v3.1 | 日期: 2026-08-14 | 状态: 修订版
 
 ---
 
@@ -22,8 +22,9 @@ Orca 现有的核心能力：
 
 - 没有"公司团队"层来统一管理人员和 Agent 配置
 - 没有"项目团队"概念——从公司团队抽调人员组成项目小组
-- 没有 Issue 驱动的分支 + Worktree 自动分配机制
+- 没有基于 Git 的 Issue 驱动 Worktree 自动分配机制
 - 缺少项目级的 Issue/PR 管理视图（独立于 Tasks）
+- 缺少 Git 初始化引导，打开文件夹后不能自然进入协作流程
 - Agent 之间缺少标准化的协作 harness
 
 ### 1.2 愿景
@@ -41,9 +42,12 @@ Orca 现有的核心能力：
 |------|------|
 | Teams 是公司级 | 成员可跨项目、跨 Issue 拥有多个 worktree |
 | 项目团队从 Teams 抽调 | 项目成员必须是公司 Teams 中的成员 |
-| Issue 驱动分支 | 每个 Issue 一个分支，完成后合并 |
-| 单一联系人 | 每个 Issue 只有一个成员负责与用户沟通 |
+| Project 与 Orca 一致 | 打开的文件夹即项目；未初始化 Git 时提示 `git init` |
+| Git 驱动协作 | 所有衍生能力以 Git 仓库为前提 |
+| 推荐单一联系人 | 默认由负责人对外沟通，但不做硬性权限隔离 |
+| 项目团队全员可见 | Issue/PR 评论默认对项目团队成员可见 |
 | 复用 Tasks 能力 | 不修改 Tasks，创建并列的 Issues and PRs 面板 |
+| 复用 Orca 宿主能力 | 本地、SSH、WSL、多宿主执行沿用 Orca 现有能力 |
 
 ---
 
@@ -110,7 +114,7 @@ Orca 现有的核心能力：
 
 ### 2.3 Issues and PRs（项目级需求管理）
 
-**与 Tasks 并列的新面板，按项目管理 Issue 和 PR**。
+**与 Tasks 并列的新面板，按已接入 Git 的 Orca 项目管理 Issue 和 PR**。
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -139,16 +143,16 @@ Orca 现有的核心能力：
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 2.4 Issue 驱动的分支 + Worktree 模型
+### 2.4 Issue 驱动的 Worktree 模型
 
 ```
 Issue #12: 实现用户登录功能
   │
-  ├── 分支: feature/issue-12-user-login
+  ├── Issue 工作线
   │
   ├── 负责人: 小K (PM)
   │     └── Worktree: issue-12-pm/
-  │           └── Terminal 1: Agent Kimi/K3 (负责与用户沟通 + 需求分析)
+  │           └── Terminal 1: Agent Kimi/K3 (需求澄清、协调、集成)
   │
   ├── 开发: 小D (Dev)
   │     └── Worktree: issue-12-dev/
@@ -158,22 +162,30 @@ Issue #12: 实现用户登录功能
         └── Worktree: issue-12-design/
               └── Terminal 1: Agent OpenCode/多模态 (负责 UI 设计)
 
-完成验收后 → 合并 PR → 分支合入 main
+各成员在独立 worktree 中推进 → 负责人集成/解决冲突 → Issue PR → 合入 main
 ```
 
 **规则**：
-- 每个 Issue 创建一个分支
-- 每个有任务的成员在该分支上有一个 worktree
+- 每个 Issue 为有任务的成员分配独立 worktree
 - 每个成员在该 Issue 上只有**一个 Terminal**（Agent 内部并行子任务）
 - 一个成员可同时负责多个 Issue（多个 worktree）
+- 如出现代码冲突，由项目负责人负责集成与冲突解决
 
-### 2.5 单一联系人机制
+**实现说明**：
+- 产品层以 worktree 作为主要心智模型
+- Git 底层仍需要为 worktree 提供可 checkout 的引用状态
+- `Issue 工作线` 是业务概念，不等同于单一 branch
+- 在大 Issue 中，负责人可在工作线下按需创建多个 branches / refs
+- 该分支/ref 策略属于实现细节，不作为用户主要操作对象
 
-每个 Issue 有一个**负责人**：
-- 负责人是与用户一对一沟通的唯一接口
-- 负责人在 Issue 中汇总用户需求，分发给团队
-- 其他成员不直接与用户沟通，通过 Issue 评论交流
+### 2.5 推荐单一联系人机制
+
+每个 Issue 有一个**负责人**，系统默认推荐采用单一联系人模式：
+- 负责人优先作为与用户沟通的主要接口
+- 负责人在 Issue 中汇总需求、分发任务、组织验收
+- 项目团队成员都可以看到 Issue 评论和协作上下文
 - 负责人通常是 PM 或产品经理，但可以是任何 Team 成员
+- 该机制用于优化体验，不做硬性权限隔离
 
 ---
 
@@ -304,7 +316,7 @@ Orca 的导航入口位于**左侧边栏顶部**，采用垂直排列方式。�
 ├─────────────────────────────────────────────────────────┤
 │  [讨论] [Worktrees] [Pipeline] [活动]                    │
 │                                                         │
-│  状态: Open  |  优先级: High  |  分支: feature/issue-12 │
+│  状态: Open  |  优先级: High  |  工作线: issue-12 │
 │  负责人: 小K (PM)                                       │
 │                                                         │
 │  ┌─ 讨论 ────────────────────────────────────────────┐  │
@@ -361,15 +373,15 @@ Orca 的导航入口位于**左侧边栏顶部**，采用垂直排列方式。�
 
 | 功能 | 优先级 | 描述 |
 |------|--------|------|
-| 创建项目 | P0 | 名称、描述、关联 Git 仓库 |
+| 接入项目 | P0 | 基于 Orca 已打开文件夹；检测 Git，未初始化则提示 `git init` |
 | 项目列表 | P0 | 左侧项目列表 |
 | 创建 Issue | P0 | 标题、描述、优先级、指定负责人 |
 | Issue 列表 | P0 | 按状态/负责人筛选 |
 | Issue 详情 | P0 | 讨论 + Worktrees + Pipeline + 活动 |
 | Issue 状态流转 | P0 | Open → In Dev → Review → Done |
-| Issue 评论 | P0 | 用户和 Agent 都可评论 |
+| Issue 评论 | P0 | 用户和 Agent 都可评论，项目团队成员默认可见 |
 | 创建子 Issue | P1 | 需求分解 |
-| 创建 PR | P0 | 从 worktree 分支创建 |
+| 创建 PR | P0 | 从 Issue 工作线创建 |
 | PR Diff 查看 | P0 | 复用现有 diff 能力 |
 | PR 审批 | P0 | Reviewer approve/reject |
 | PR 合并 | P0 | Merge/Squash/Rebase |
@@ -382,18 +394,18 @@ Orca 的导航入口位于**左侧边栏顶部**，采用垂直排列方式。�
 |------|--------|------|
 | 邀请成员 | P0 | 从 Teams 添加到项目团队 |
 | 移除成员 | P0 | 从项目团队移除（需先关闭 worktree） |
-| 指定负责人 | P0 | 为 Issue 指定负责人 |
+| 指定负责人 | P0 | 为 Issue 指定负责人，默认承担对外沟通与集成职责 |
 | 查看项目团队 | P0 | 显示当前项目所有参与成员 |
 
 ### 4.4 Issue 驱动开发
 
 | 功能 | 优先级 | 描述 |
 |------|--------|------|
-| 创建 Issue 分支 | P0 | 自动创建 feature/issue-{n}-xxx 分支 |
 | 分配成员 Worktree | P0 | 为每个有任务的成员创建 worktree |
 | 启动 Agent | P0 | 在 worktree Terminal 中启动绑定 Agent |
-| 单一联系人 | P0 | 指定负责人作为唯一用户接口 |
-| Agent 评论反馈 | P0 | Agent 在 Issue 中评论进度 |
+| 推荐单一联系人 | P1 | 默认由负责人对外沟通，但项目团队评论全员可见 |
+| Agent 评论反馈 | P0 | Agent 在 Issue 中评论进度，项目团队共享上下文 |
+| Worktree 底层引用管理 | P1 | 系统自动处理 Git 引用状态，不要求用户理解分支细节 |
 | PR 自动创建 | P1 | 开发完成后提示创建 PR |
 | Issue 关闭 | P0 | PR 合并后自动/手动关闭 Issue |
 
@@ -408,6 +420,7 @@ Orca 的导航入口位于**左侧边栏顶部**，采用垂直排列方式。�
 | Git CLI | P0 | Agent 执行 git 操作 |
 | 收敛规则引擎 | P0 | 轮次上限/超时/scope 控制 |
 | Harness Prompt 注入 | P0 | 自动注入角色 Prompt |
+| 角色工作流配置 | P0 | 通过 Prompt + Harness 定义成员协作方式，不在系统中硬编码角色流程 |
 
 ---
 
@@ -417,21 +430,24 @@ Orca 的导航入口位于**左侧边栏顶部**，采用垂直排列方式。�
 
 ```
 1. Orca 启动 → 检测 git → 未安装则提示
-2. 打开/创建文件夹 → 提示 git init → 激活 Issue/PR
+2. 打开/创建文件夹 → 检测是否为 Git 仓库 → 不是则提示 `git init`
 3. 进入 Teams 面板 → 创建公司团队:
    a. 产品经理 → Agent: Kimi CLI, Model: K3
    b. 全栈工程师 → Agent: OpenCode, Model: Deepseek V4 Flash
    c. UI 设计师 → Agent: OpenCode, Model: 多模态模型
    d. 测试工程师 → Agent: Claude Code, Model: Sonnet
 4. 为每个成员配置 Skills、Prompt、性格特质
+5. 成员如何开展工作、如何协同、如何收敛，主要由 Prompt 和 Harness 规则决定
 ```
 
-### 5.2 项目创建与团队组建
+### 5.2 项目接入与团队组建
 
 ```
-1. 进入 Issues and PRs → 创建项目 "Alpha"
-2. 关联本地 Git 仓库
-3. 组建项目团队:
+1. 用户在 Orca 中打开项目文件夹 "Alpha"
+2. 系统检测 Git 状态：
+   - 已初始化 → 直接接入 Issues and PRs
+   - 未初始化 → 提示 `git init`，成功后接入
+3. 在 Issues and PRs 中为该项目组建项目团队:
    - 邀请 小K (PM) → 设为负责人
    - 邀请 小D (Dev)
    - 邀请 小M (Designer)
@@ -445,14 +461,14 @@ Orca 的导航入口位于**左侧边栏顶部**，采用垂直排列方式。�
    "实现用户登录功能，支持手机号+验证码"
 
 2. 系统自动:
-   a. 创建分支 feature/issue-12-user-login
+   a. 为该 Issue 建立工作线
    b. 通知负责人小K
 
-3. 负责人小K 分配任务:
+3. 负责人小K 依据当前 Harness 规则分配任务:
    - 小D: 后端开发
    - 小M: UI 设计
 
-4. 系统自动为 小D、小M 创建 worktree:
+4. 系统自动为 小D、小M 创建独立 worktree:
    - issue-12-dev/ (小D)
    - issue-12-design/ (小M)
 
@@ -461,11 +477,11 @@ Orca 的导航入口位于**左侧边栏顶部**，采用垂直排列方式。�
    - 小D: OpenCode/Deepseek → 编码实现
    - 小M: OpenCode/多模态 → UI 设计
 
-6. Agent 在 Issue 中评论进度，用户通过负责人小K 沟通
+6. Agent 在 Issue 中评论进度，项目团队共享上下文；对外沟通默认由负责人小K 主导
 
-7. 开发完成 → 小D 创建 PR → Review → 合并 → 关闭 Issue
+7. 各成员完成各自 worktree 中的任务后，由负责人基于当前工作线组织集成、处理冲突并创建/推进 Issue PR
 
-8. Worktree 关闭，分支合入 main
+8. Review → 合并 → 关闭 Issue → 关闭 Worktree → 变更合入 main
 ```
 
 ### 5.4 并行 Issue 开发
@@ -505,22 +521,23 @@ Teams (公司级)
        └── 参与多个 Issue (通过 Worktree)
 
 Project (项目)
+  ├── 与 Orca Project 一致（打开的文件夹）
+  ├── 以 Git 仓库为协作前提
   ├── 1:N → Issue
-  ├── 1:N → ProjectTeamMember (中间表，关联 TeamMember)
-  └── 所属 Git 仓库
+  └── 1:N → ProjectTeamMember (中间表，关联 TeamMember)
 
 Issue
-  ├── 1:1 → Branch (feature/issue-{n}-xxx)
+  ├── 1:N → Worktree
   ├── N:1 → Project
   ├── N:1 → Owner (负责人，TeamMember)
   ├── 1:N → IssueComment
-  └── 1:N → Worktree (每个成员一个)
+  └── 1:1 → PullRequest（可选，完成阶段产生）
 
 Worktree
   ├── N:1 → Issue
   ├── N:1 → TeamMember
   ├── 1:1 → Terminal (每个 Issue-Member 对只有一个 Terminal)
-  └── N:1 → Branch
+  └── 底层关联 Git checkout 状态（实现细节）
 
 Terminal
   ├── 1:1 → AgentSession
@@ -531,12 +548,12 @@ Terminal
 
 | 数据 | 存储 | 位置 |
 |------|------|------|
-| Teams/Members | SQLite | `~/.orca/teams.db` |
+| Teams/Members | SQLite | `~/.orca/collaboration.db` |
 | Projects | SQLite | `~/.orca/collaboration.db` |
 | Issues/Comments | SQLite | `~/.orca/collaboration.db` |
 | PRs/Comments | SQLite | `~/.orca/collaboration.db` |
 | Worktree-Issue 映射 | SQLite | `~/.orca/collaboration.db` |
-| Agent 配置 (加密) | SQLite | `~/.orca/teams.db` |
+| Agent 配置 (加密) | SQLite | `~/.orca/collaboration.db` |
 | 活动日志 | SQLite | `~/.orca/collaboration.db` |
 
 ---
@@ -577,15 +594,16 @@ System Prompt:
   默认 Prompt: {default_prompt}
 
   当前 Issue: {issue_title}
-  分支: {branch_name}
+  Issue 工作线: {issue_workline}
   Worktree: {worktree_path}
-  你是本 Issue 的{role}，{如果是负责人，额外注明"负责人，负责与用户沟通"}
+  你是本 Issue 的{role}，{如果是负责人，额外注明"负责人，优先负责对外沟通和集成"}
 
   规则:
-  - 每次操作后必须在 Issue 中评论反馈
+  - 每次操作后在 Issue 中评论反馈
   - 任务完成后必须评论总结
   - 使用 orca CLI 工具执行操作
   - 禁止需求无限膨胀
+  - 角色工作流由 Prompt 与 Harness 决定，不依赖固定审批模板
 ```
 
 ---
@@ -595,9 +613,9 @@ System Prompt:
 | 里程碑 | 内容 | 周期 |
 |--------|------|------|
 | M1 | Teams + Issues and PRs 基础 + 项目团队 | 3 周 |
-| M2 | Issue 驱动开发 + 分支/Worktree 自动分配 | 2 周 |
+| M2 | Issue 驱动开发 + Worktree 自动分配 | 2 周 |
 | M3 | Pipeline Harness + Agent 协作 | 3 周 |
-| M4 | 收敛机制 + 单一联系人 + 并行优化 | 2 周 |
+| M4 | 收敛机制 + 协作体验 + 并行优化 | 2 周 |
 
 ---
 
@@ -618,5 +636,5 @@ System Prompt:
 |------|------|------|
 | Agent 协作效率低 | 高 | 收敛规则 + 超时上报 + 人类兜底 |
 | 需求 scope 膨胀 | 高 | 负责人审批 + 轮次上限 |
-| 多 Agent 并发冲突 | 中 | 独立 worktree + branch 隔离 |
+| 多 Agent 并发冲突 | 中 | 独立 worktree 隔离，负责人负责集成冲突 |
 | Agent CLI 兼容性 | 中 | 抽象 CLI 层 |
