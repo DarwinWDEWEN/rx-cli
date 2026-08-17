@@ -1,5 +1,14 @@
 import React from 'react'
-import { Bell, CalendarClock, EyeOff, Files, Search, Smartphone } from 'lucide-react'
+import {
+  Bell,
+  CalendarClock,
+  EyeOff,
+  Files,
+  GitPullRequestArrow,
+  Search,
+  Smartphone,
+  Users
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -60,6 +69,8 @@ const SidebarNav = React.memo(function SidebarNav() {
   const openActivityPage = useAppStore((s) => s.openActivityPage)
   const openMobilePage = useAppStore((s) => s.openMobilePage)
   const openArtifactsPage = useAppStore((s) => s.openArtifactsPage)
+  const openIssuesAndPRsPage = useAppStore((s) => s.openIssuesAndPRsPage)
+  const openTeamsPage = useAppStore((s) => s.openTeamsPage)
   const openModal = useAppStore((s) => s.openModal)
   const updateSettings = useAppStore((s) => s.updateSettings)
   const activeView = useAppStore((s) => s.activeView)
@@ -77,6 +88,8 @@ const SidebarNav = React.memo(function SidebarNav() {
   const activityActive = activeView === 'activity'
   const mobileActive = activeView === 'mobile'
   const artifactsActive = activeView === 'artifacts'
+  const teamsActive = activeView === 'teams'
+  const issuesAndPRsActive = activeView === 'issues-and-prs'
   const activityUnreadCount = useActivityUnreadCount(showAgentsButton, 'sidebar-badge')
   const mobileOnboardingBadge = useMobileSidebarOnboardingBadge(showMobileButton)
   const hideAutomationsButton = React.useCallback(() => {
@@ -96,6 +109,47 @@ const SidebarNav = React.memo(function SidebarNav() {
     >
       <SetupGuideSidebarEntry />
       <SidebarTaskNavButton />
+      <button
+        type="button"
+        onClick={openTeamsPage}
+        aria-current={teamsActive ? 'page' : undefined}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+          teamsActive
+            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
+            : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
+        )}
+      >
+        <Users
+          className={cn('size-4 shrink-0', !teamsActive && 'text-worktree-sidebar-foreground/30')}
+          strokeWidth={teamsActive ? 2.25 : 1.75}
+        />
+        <span className="flex-1">
+          {translate('auto.components.sidebar.SidebarNav.teams', 'Teams')}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={openIssuesAndPRsPage}
+        aria-current={issuesAndPRsActive ? 'page' : undefined}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+          issuesAndPRsActive
+            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
+            : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
+        )}
+      >
+        <GitPullRequestArrow
+          className={cn(
+            'size-4 shrink-0',
+            !issuesAndPRsActive && 'text-worktree-sidebar-foreground/30'
+          )}
+          strokeWidth={issuesAndPRsActive ? 2.25 : 1.75}
+        />
+        <span className="flex-1">
+          {translate('auto.components.sidebar.SidebarNav.issuesAndPRs', 'Issues and PRs')}
+        </span>
+      </button>
       {showArtifactsButton ? (
         <ContextMenu>
           <ContextMenuTrigger asChild>

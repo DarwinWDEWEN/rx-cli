@@ -32,6 +32,14 @@ import type { RuntimePairingReach } from '../shared/runtime-pairing-reach'
 import type { MobileRelayMintFailure } from '../shared/mobile-relay-mint-failure'
 import type { VerifyAndAddRuntimeEnvironmentResult } from '../shared/remote-pairing-verification'
 import type {
+  CreateTeamMemberInput,
+  DeleteConstraintResult,
+  Issue,
+  Project as CollaborationProject,
+  TeamMemberRecord,
+  UpdateTeamMemberInput
+} from '../shared/team-types'
+import type {
   SshMutationExpectation,
   SshConnectionState,
   SshConfigHostListArgs,
@@ -1989,6 +1997,78 @@ const api = {
       projectKey: string
       siteId?: string
     }): Promise<JiraProjectStatusOrder> => ipcRenderer.invoke('jira:getProjectStatusOrder', args)
+  },
+
+  collaboration: {
+    team: {
+      list: (): Promise<TeamMemberRecord[]> => ipcRenderer.invoke('team:list'),
+      get: (args: { id: string }): Promise<TeamMemberRecord> =>
+        ipcRenderer.invoke('team:get', args),
+      create: (args: CreateTeamMemberInput): Promise<TeamMemberRecord> =>
+        ipcRenderer.invoke('team:create', args),
+      update: (args: UpdateTeamMemberInput): Promise<TeamMemberRecord> =>
+        ipcRenderer.invoke('team:update', args),
+      canDelete: (args: { id: string }): Promise<DeleteConstraintResult> =>
+        ipcRenderer.invoke('team:canDelete', args),
+      delete: (args: { id: string }): Promise<void> => ipcRenderer.invoke('team:delete', args)
+    },
+    project: {
+      list: (): Promise<CollaborationProject[]> => ipcRenderer.invoke('project:list'),
+      get: (args: { id: string }): Promise<CollaborationProject> =>
+        ipcRenderer.invoke('project:get', args),
+      register: (args: {
+        name: string
+        description?: string
+        workspaceId?: string
+        hostId: string
+        hostType: string
+        repoPath: string
+        defaultBranch?: string
+      }): Promise<CollaborationProject> => ipcRenderer.invoke('project:register', args),
+      update: (args: {
+        id: string
+        name?: string
+        description?: string
+        status?: string
+        defaultBranch?: string
+      }): Promise<CollaborationProject> => ipcRenderer.invoke('project:update', args),
+      listMembers: (args: { projectId: string }): Promise<TeamMemberRecord[]> =>
+        ipcRenderer.invoke('project:listMembers', args),
+      inviteMember: (args: {
+        projectId: string
+        memberId: string
+        roleInProject?: 'owner' | 'member'
+      }): Promise<void> => ipcRenderer.invoke('project:inviteMember', args),
+      removeMember: (args: { projectId: string; memberId: string }): Promise<void> =>
+        ipcRenderer.invoke('project:removeMember', args),
+      markGitInitialized: (args: { id: string; initialized?: boolean }): Promise<void> =>
+        ipcRenderer.invoke('project:markGitInitialized', args)
+    },
+    issue: {
+      listByProject: (args: { projectId: string }): Promise<Issue[]> =>
+        ipcRenderer.invoke('issue:listByProject', args),
+      get: (args: { id: string }): Promise<Issue> => ipcRenderer.invoke('issue:get', args),
+      getByWorklineKey: (args: { projectId: string; worklineKey: string }): Promise<Issue> =>
+        ipcRenderer.invoke('issue:getByWorklineKey', args),
+      create: (args: {
+        projectId: string
+        title: string
+        description?: string
+        priority?: 'low' | 'medium' | 'high' | 'urgent'
+        ownerId: string
+      }): Promise<Issue> => ipcRenderer.invoke('issue:create', args),
+      update: (args: {
+        id: string
+        title?: string
+        description?: string
+        priority?: 'low' | 'medium' | 'high' | 'urgent'
+        status?: 'open' | 'done'
+        worklineState?: string
+        ownerId?: string
+      }): Promise<Issue> => ipcRenderer.invoke('issue:update', args),
+      nextIssueNumber: (args: { projectId: string }): Promise<number> =>
+        ipcRenderer.invoke('issue:nextIssueNumber', args)
+    }
   },
 
   starNag: {

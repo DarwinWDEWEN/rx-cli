@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   openActivityPage: vi.fn(),
   openMobilePage: vi.fn(),
   openArtifactsPage: vi.fn(),
+  openIssuesAndPRsPage: vi.fn(),
+  openTeamsPage: vi.fn(),
   openModal: vi.fn(),
   updateSettings: vi.fn(),
   refreshPreflightStatus: vi.fn(),
@@ -120,20 +122,24 @@ function folderRepo(): Repo {
 
 function setSidebarState({
   settings = getDefaultSettings('/tmp'),
-  repos = [gitRepo()]
+  repos = [gitRepo()],
+  activeView = 'worktrees'
 }: {
   settings?: GlobalSettings
   repos?: Repo[]
+  activeView?: string
 } = {}): void {
   mocks.state = {
     settings,
     repos,
-    activeView: 'worktrees',
+    activeView,
     openTaskPage: mocks.openTaskPage,
     openAutomationsPage: mocks.openAutomationsPage,
     openActivityPage: mocks.openActivityPage,
     openMobilePage: mocks.openMobilePage,
     openArtifactsPage: mocks.openArtifactsPage,
+    openIssuesAndPRsPage: mocks.openIssuesAndPRsPage,
+    openTeamsPage: mocks.openTeamsPage,
     openModal: mocks.openModal,
     updateSettings: mocks.updateSettings,
     preflightStatus: { glab: { installed: false } },
@@ -508,5 +514,44 @@ describe('SidebarNav', () => {
     expect(getSetupGuideSidebarEntryReady(false, true)).toBe(false)
     expect(getSetupGuideSidebarEntryReady(true, false)).toBe(false)
     expect(getSetupGuideSidebarEntryReady(true, true)).toBe(true)
+  })
+
+  it('renders Teams and Issues and PRs entries by default', async () => {
+    const container = await renderSidebarNav()
+
+    expect(queryButtonByText(container, 'Teams')).not.toBeNull()
+    expect(queryButtonByText(container, 'Issues and PRs')).not.toBeNull()
+  })
+
+  it('calls openTeamsPage when Teams entry is clicked', async () => {
+    const container = await renderSidebarNav()
+
+    await clickButton(getButtonByText(container, 'Teams'))
+
+    expect(mocks.openTeamsPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls openIssuesAndPRsPage when Issues and PRs entry is clicked', async () => {
+    const container = await renderSidebarNav()
+
+    await clickButton(getButtonByText(container, 'Issues and PRs'))
+
+    expect(mocks.openIssuesAndPRsPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks Teams entry as active when activeView is teams', async () => {
+    setSidebarState({ activeView: 'teams' })
+    const container = await renderSidebarNav()
+
+    const teamsButton = getButtonByText(container, 'Teams')
+    expect(teamsButton.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('marks Issues and PRs entry as active when activeView is issues-and-prs', async () => {
+    setSidebarState({ activeView: 'issues-and-prs' })
+    const container = await renderSidebarNav()
+
+    const issuesAndPRsButton = getButtonByText(container, 'Issues and PRs')
+    expect(issuesAndPRsButton.getAttribute('aria-current')).toBe('page')
   })
 })

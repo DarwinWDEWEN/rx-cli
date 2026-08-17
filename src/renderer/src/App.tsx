@@ -340,6 +340,8 @@ const ActivityPrototypePage = lazy(() => import('./components/activity/ActivityP
 const Settings = lazy(() => import('./components/settings/Settings'))
 const SkillsPage = lazy(() => import('./components/skills/SkillsPage'))
 const ArtifactsPage = lazy(() => import('./components/artifacts/ArtifactsPage'))
+const IssuesAndPRsPage = lazy(() => import('./components/issues-and-prs/IssuesAndPRsPage'))
+const TeamsPage = lazy(() => import('./components/teams/TeamsPage'))
 const WorkspaceSpacePage = lazy(() => import('./components/workspace-space/WorkspaceSpacePage'))
 const MobilePage = lazy(() => import('./components/mobile/MobilePage'))
 const QuickOpen = lazy(() => import('./components/QuickOpen'))
@@ -2409,6 +2411,8 @@ function App(): React.JSX.Element {
                               {activeView === 'tasks' ? <TaskPage /> : null}
                               {activeView === 'automations' ? <AutomationsPage /> : null}
                               {activeView === 'activity' ? <ActivityPrototypePage /> : null}
+                              {activeView === 'issues-and-prs' ? <IssuesAndPRsPage /> : null}
+                              {activeView === 'teams' ? <TeamsPage /> : null}
                               {activeView === 'space' ? <WorkspaceSpacePage /> : null}
                               {activeView === 'mobile' ? <MobilePage /> : null}
                               {activeView === 'terminal' &&

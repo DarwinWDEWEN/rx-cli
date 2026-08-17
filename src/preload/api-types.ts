@@ -125,6 +125,14 @@ import type { PluginChangeEvent } from '../shared/plugins/plugin-change-event'
 import type { PluginManifest } from '../shared/plugins/plugin-manifest'
 import type { PluginMarketplaceGitSource } from '../shared/plugins/plugin-marketplace'
 import type {
+  CreateTeamMemberInput,
+  DeleteConstraintResult,
+  Issue,
+  Project as CollaborationProject,
+  TeamMemberRecord,
+  UpdateTeamMemberInput
+} from '../shared/team-types'
+import type {
   LocalhostWorktreeLabelResult,
   LocalhostWorktreeLabelRoute
 } from '../shared/localhost-worktree-labels'
@@ -2324,6 +2332,66 @@ export type PreloadApi = {
       projectKey: string
       siteId?: string
     }) => Promise<JiraProjectStatusOrder>
+  }
+  collaboration: {
+    team: {
+      list: () => Promise<TeamMemberRecord[]>
+      get: (args: { id: string }) => Promise<TeamMemberRecord>
+      create: (args: CreateTeamMemberInput) => Promise<TeamMemberRecord>
+      update: (args: UpdateTeamMemberInput) => Promise<TeamMemberRecord>
+      canDelete: (args: { id: string }) => Promise<DeleteConstraintResult>
+      delete: (args: { id: string }) => Promise<void>
+    }
+    project: {
+      list: () => Promise<CollaborationProject[]>
+      get: (args: { id: string }) => Promise<CollaborationProject>
+      register: (args: {
+        name: string
+        description?: string
+        workspaceId?: string
+        hostId: string
+        hostType: string
+        repoPath: string
+        defaultBranch?: string
+      }) => Promise<CollaborationProject>
+      update: (args: {
+        id: string
+        name?: string
+        description?: string
+        status?: string
+        defaultBranch?: string
+      }) => Promise<CollaborationProject>
+      listMembers: (args: { projectId: string }) => Promise<TeamMemberRecord[]>
+      inviteMember: (args: {
+        projectId: string
+        memberId: string
+        roleInProject?: 'owner' | 'member'
+      }) => Promise<void>
+      removeMember: (args: { projectId: string; memberId: string }) => Promise<void>
+      markGitInitialized: (args: { id: string; initialized?: boolean }) => Promise<void>
+    }
+    issue: {
+      listByProject: (args: { projectId: string }) => Promise<Issue[]>
+      get: (args: { id: string }) => Promise<Issue>
+      getByWorklineKey: (args: { projectId: string; worklineKey: string }) => Promise<Issue>
+      create: (args: {
+        projectId: string
+        title: string
+        description?: string
+        priority?: 'low' | 'medium' | 'high' | 'urgent'
+        ownerId: string
+      }) => Promise<Issue>
+      update: (args: {
+        id: string
+        title?: string
+        description?: string
+        priority?: 'low' | 'medium' | 'high' | 'urgent'
+        status?: 'open' | 'done'
+        worklineState?: string
+        ownerId?: string
+      }) => Promise<Issue>
+      nextIssueNumber: (args: { projectId: string }) => Promise<number>
+    }
   }
   starNag: {
     onShow: (

@@ -1,0 +1,298 @@
+// @vitest-environment happy-dom
+
+import { render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Issue, Project } from '../../../../shared/team-types'
+
+const mockProjectList = vi.fn<() => Promise<Project[]>>()
+const mockIssueListByProject = vi.fn<(args: { projectId: string }) => Promise<Issue[]>>()
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn()
+  }
+}))
+
+function makeProject(overrides: Partial<Project> = {}): Project {
+  return {
+    id: 'proj-1',
+    name: 'Test Project',
+    description: 'A test project',
+    status: 'active',
+    defaultBranch: 'main',
+    workspaceId: 'ws-1',
+    hostId: 'host-1',
+    hostType: 'github',
+    repoPath: 'test/repo',
+    gitInitialized: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides
+  }
+}
+
+function makeIssue(overrides: Partial<Issue> = {}): Issue {
+  return {
+    id: 'issue-1',
+    projectId: 'proj-1',
+    number: 1,
+    title: 'Test Issue',
+    description: '',
+    status: 'open',
+    priority: 'medium',
+    ownerId: 'member-1',
+    worklineKey: '',
+    worklineState: '',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides
+  }
+}
+
+// Why: dynamic import ensures vi.mock is hoisted before component import
+async function renderIssuesAndPRsPage() {
+  const { default: IssuesAndPRsPage } = await import('./IssuesAndPRsPage')
+  return render(<IssuesAndPRsPage />)
+}
+
+describe('IssuesAndPRsPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    // Why: manually clear DOM to prevent test pollution
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  it('renders empty project state when no projects exist', async () => {
+    mockProjectList.mockResolvedValue([])
+    mockIssueListByProject.mockResolvedValue([])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+    await renderIssuesAndPRsPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('No projects yet')).not.toBeNull()
+    })
+    expect(mockProjectList).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders project selector when projects exist', async () => {
+    const projects = [
+      makeProject({ id: 'p1', name: 'Project A' }),
+      makeProject({ id: 'p2', name: 'Project B' })
+    ]
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockResolvedValue([])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+    await renderIssuesAndPRsPage()
+
+    await waitFor(
+      () => {
+        const select = document.querySelector('select')
+        expect(select).not.toBeNull()
+        expect(within(select as HTMLElement).getByText('Project A')).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it('loads issues when a project is selected', async () => {
+    const projects = [makeProject({ id: 'p1', name: 'Project A' })]
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockResolvedValue([
+      makeIssue({ id: 'i1', number: 1, title: 'First Issue' }),
+      makeIssue({ id: 'i2', number: 2, title: 'Second Issue' })
+    ])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+    await renderIssuesAndPRsPage()
+
+    await waitFor(
+      () => {
+        expect(mockIssueListByProject).toHaveBeenCalledWith({ projectId: 'p1' })
+      },
+      { timeout: 5000 }
+    )
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/First Issue/)).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it('shows empty issue state when project has no issues', async () => {
+    mockProjectList.mockResolvedValue([makeProject({ id: 'p1', name: 'Project A' })])
+    mockIssueListByProject.mockResolvedValue([])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+    await renderIssuesAndPRsPage()
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('No issues yet')).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it('switches between Issues and PRs tabs', async () => {
+    mockProjectList.mockResolvedValue([makeProject({ id: 'p1', name: 'Project A' })])
+    mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+    await renderIssuesAndPRsPage()
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/An Issue/)).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+
+    // Switch to PRs tab
+    const prsTab = screen.getByText('PRs')
+    prsTab.click()
+
+    await waitFor(() => {
+      expect(screen.getByText(/PR list coming soon/)).not.toBeNull()
+    })
+  })
+
+  it('shows error toast when project list fails', async () => {
+    const { toast } = await import('sonner')
+    mockProjectList.mockRejectedValue(new Error('Network error'))
+    mockIssueListByProject.mockResolvedValue([])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+    await renderIssuesAndPRsPage()
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Could not load projects')
+    })
+  })
+
+  it('discards stale issue list when switching projects rapidly', async () => {
+    // Why: race condition test - when user switches projects quickly, stale responses
+    // from the first project should not overwrite the newer project's data
+    const projects = [
+      makeProject({ id: 'p1', name: 'Project A' }),
+      makeProject({ id: 'p2', name: 'Project B' })
+    ]
+
+    // Create delays to simulate slow API: p1 responds slowly, p2 responds quickly
+    let p1Resolve: (issues: Issue[]) => void = () => {}
+    const p1Promise = new Promise<Issue[]>((resolve) => {
+      p1Resolve = resolve
+    })
+
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockImplementation(async ({ projectId }) => {
+      if (projectId === 'p1') {
+        return p1Promise
+      }
+      // p2 responds immediately
+      return [makeIssue({ id: 'i-p2', projectId: 'p2', number: 100, title: 'P2 Issue' })]
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+
+    await renderIssuesAndPRsPage()
+
+    // Wait for initial load with p1 selected
+    await waitFor(
+      () => {
+        expect(mockIssueListByProject).toHaveBeenCalledWith({ projectId: 'p1' })
+      },
+      { timeout: 5000 }
+    )
+
+    // Switch to p2 while p1 request is still pending
+    const select = document.querySelector('select') as HTMLSelectElement
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.change(select, { target: { value: 'p2' } })
+
+    // Wait for p2 response to be displayed
+    await waitFor(
+      () => {
+        expect(screen.getByText(/P2 Issue/)).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+
+    // Now resolve p1 with stale data (simulating slow response arriving late)
+    p1Resolve([makeIssue({ id: 'i-p1', projectId: 'p1', number: 999, title: 'Stale P1 Issue' })])
+
+    // Wait a bit to let any potential state updates settle
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    // Verify stale p1 data did NOT overwrite current p2 data
+    expect(screen.getByText(/P2 Issue/)).not.toBeNull()
+    expect(screen.queryByText(/Stale P1 Issue/)).toBeNull()
+  })
+
+  it('shows detail panel placeholder when issues exist', async () => {
+    mockProjectList.mockResolvedValue([makeProject({ id: 'p1', name: 'Project A' })])
+    mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).api = {
+      collaboration: {
+        project: { list: mockProjectList },
+        issue: { listByProject: mockIssueListByProject }
+      }
+    }
+    await renderIssuesAndPRsPage()
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/An Issue/)).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+
+    // Detail panel placeholder should be visible
+    expect(screen.getByText(/Issue details coming soon/)).not.toBeNull()
+  })
+})
