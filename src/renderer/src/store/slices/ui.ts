@@ -134,6 +134,9 @@ import { parsePaneKey } from '../../../../shared/stable-pane-id'
 import { translate } from '@/i18n/i18n'
 import { getRepoHostIdentity } from './repo-host-identity'
 
+// Why: previousViewBefore* invariant is "never equals current view itself"; Exclude<TopLevelView, T> makes this derivable, avoiding manual union updates per view.
+type PreviousViewBefore<T extends TopLevelView> = Exclude<TopLevelView, T>
+
 export type PendingSidebarWorktreeReveal = {
   worktreeId: string
   behavior: 'auto' | 'smooth'
@@ -610,78 +613,16 @@ export type UISlice = {
   acknowledgeAgents: (paneKeys: string[]) => void
   unacknowledgeAgents: (paneKeys: string[]) => void
   activeView: TopLevelView
-  previousViewBeforeTasks:
-    | 'terminal'
-    | 'settings'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'skills'
-    | 'artifacts'
-    | 'mobile'
-  previousViewBeforeSettings:
-    | 'terminal'
-    | 'tasks'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'skills'
-    | 'artifacts'
-    | 'mobile'
-  previousViewBeforeActivity:
-    | 'terminal'
-    | 'settings'
-    | 'tasks'
-    | 'automations'
-    | 'space'
-    | 'skills'
-    | 'artifacts'
-    | 'mobile'
-  previousViewBeforeAutomations:
-    | 'terminal'
-    | 'settings'
-    | 'tasks'
-    | 'activity'
-    | 'space'
-    | 'skills'
-    | 'artifacts'
-    | 'mobile'
-  previousViewBeforeSpace:
-    | 'terminal'
-    | 'settings'
-    | 'tasks'
-    | 'activity'
-    | 'automations'
-    | 'skills'
-    | 'artifacts'
-    | 'mobile'
-  previousViewBeforeSkills:
-    | 'terminal'
-    | 'settings'
-    | 'tasks'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'artifacts'
-    | 'mobile'
-  previousViewBeforeMobile:
-    | 'terminal'
-    | 'settings'
-    | 'tasks'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'skills'
-    | 'artifacts'
-  previousViewBeforeArtifacts:
-    | 'terminal'
-    | 'settings'
-    | 'tasks'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'skills'
-    | 'mobile'
+  previousViewBeforeTasks: PreviousViewBefore<'tasks'>
+  previousViewBeforeSettings: PreviousViewBefore<'settings'>
+  previousViewBeforeActivity: PreviousViewBefore<'activity'>
+  previousViewBeforeAutomations: PreviousViewBefore<'automations'>
+  previousViewBeforeSpace: PreviousViewBefore<'space'>
+  previousViewBeforeSkills: PreviousViewBefore<'skills'>
+  previousViewBeforeMobile: PreviousViewBefore<'mobile'>
+  previousViewBeforeArtifacts: PreviousViewBefore<'artifacts'>
+  previousViewBeforeIssuesAndPRs: PreviousViewBefore<'issues-and-prs'>
+  previousViewBeforeTeams: PreviousViewBefore<'teams'>
   setActiveView: (view: UISlice['activeView']) => void
   taskPageData: {
     preselectedRepoId?: string
@@ -758,6 +699,10 @@ export type UISlice = {
   ) => void
   openAutomationsPage: () => void
   closeAutomationsPage: () => void
+  openIssuesAndPRsPage: () => void
+  closeIssuesAndPRsPage: () => void
+  openTeamsPage: () => void
+  closeTeamsPage: () => void
   openSpacePage: () => void
   closeSpacePage: () => void
   openSkillsPage: () => void
@@ -1260,6 +1205,8 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
   previousViewBeforeSkills: 'terminal',
   previousViewBeforeMobile: 'terminal',
   previousViewBeforeArtifacts: 'terminal',
+  previousViewBeforeIssuesAndPRs: 'terminal',
+  previousViewBeforeTeams: 'terminal',
   setActiveView: (view) => set({ activeView: view }),
   taskPageData: {},
   taskResumeState: undefined,
@@ -1482,6 +1429,54 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
       }
       return {
         activeView: state.previousViewBeforeAutomations,
+        worktreeNavHistoryIndex: nextHistoryIndex
+      }
+    }),
+  openIssuesAndPRsPage: () => {
+    get().recordViewVisit('issues-and-prs')
+    set((state) => ({
+      activeView: 'issues-and-prs',
+      previousViewBeforeIssuesAndPRs:
+        state.activeView === 'issues-and-prs'
+          ? state.previousViewBeforeIssuesAndPRs
+          : state.activeView
+    }))
+  },
+  closeIssuesAndPRsPage: () =>
+    set((state) => {
+      const currentEntry = state.worktreeNavHistory[state.worktreeNavHistoryIndex]
+      let nextHistoryIndex = state.worktreeNavHistoryIndex
+      if (currentEntry === 'issues-and-prs') {
+        const prev = findPrevLiveWorktreeHistoryIndex(state)
+        if (prev !== null) {
+          nextHistoryIndex = prev
+        }
+      }
+      return {
+        activeView: state.previousViewBeforeIssuesAndPRs,
+        worktreeNavHistoryIndex: nextHistoryIndex
+      }
+    }),
+  openTeamsPage: () => {
+    get().recordViewVisit('teams')
+    set((state) => ({
+      activeView: 'teams',
+      previousViewBeforeTeams:
+        state.activeView === 'teams' ? state.previousViewBeforeTeams : state.activeView
+    }))
+  },
+  closeTeamsPage: () =>
+    set((state) => {
+      const currentEntry = state.worktreeNavHistory[state.worktreeNavHistoryIndex]
+      let nextHistoryIndex = state.worktreeNavHistoryIndex
+      if (currentEntry === 'teams') {
+        const prev = findPrevLiveWorktreeHistoryIndex(state)
+        if (prev !== null) {
+          nextHistoryIndex = prev
+        }
+      }
+      return {
+        activeView: state.previousViewBeforeTeams,
         worktreeNavHistoryIndex: nextHistoryIndex
       }
     }),

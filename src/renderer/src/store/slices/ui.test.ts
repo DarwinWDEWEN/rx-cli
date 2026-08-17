@@ -3585,3 +3585,83 @@ describe('createUISlice clearOsc52ClipboardDefaultOnNotice', () => {
     expect(setUI).toHaveBeenCalledWith({ osc52ClipboardDefaultOnNoticePending: false })
   })
 })
+
+describe('openIssuesAndPRsPage / closeIssuesAndPRsPage', () => {
+  it('returns to the originating view after closing IssuesAndPRs', () => {
+    const store = createUIStore()
+
+    store.getState().openTaskPage()
+    store.getState().openIssuesAndPRsPage()
+
+    expect(store.getState().activeView).toBe('issues-and-prs')
+    expect(store.getState().previousViewBeforeIssuesAndPRs).toBe('tasks')
+
+    store.getState().closeIssuesAndPRsPage()
+
+    expect(store.getState().activeView).toBe('tasks')
+  })
+
+  it('keeps the original return target when IssuesAndPRs is reopened while already visible', () => {
+    const store = createUIStore()
+
+    store.getState().openTaskPage()
+    store.getState().openIssuesAndPRsPage()
+    store.getState().openIssuesAndPRsPage()
+
+    expect(store.getState().previousViewBeforeIssuesAndPRs).toBe('tasks')
+
+    store.getState().closeIssuesAndPRsPage()
+
+    expect(store.getState().activeView).toBe('tasks')
+  })
+})
+
+describe('openTeamsPage / closeTeamsPage', () => {
+  it('returns to the originating view after closing Teams', () => {
+    const store = createUIStore()
+
+    store.getState().openTaskPage()
+    store.getState().openTeamsPage()
+
+    expect(store.getState().activeView).toBe('teams')
+    expect(store.getState().previousViewBeforeTeams).toBe('tasks')
+
+    store.getState().closeTeamsPage()
+
+    expect(store.getState().activeView).toBe('tasks')
+  })
+
+  it('keeps the original return target when Teams is reopened while already visible', () => {
+    const store = createUIStore()
+
+    store.getState().openTaskPage()
+    store.getState().openTeamsPage()
+    store.getState().openTeamsPage()
+
+    expect(store.getState().previousViewBeforeTeams).toBe('tasks')
+
+    store.getState().closeTeamsPage()
+
+    expect(store.getState().activeView).toBe('tasks')
+  })
+})
+
+describe('hydration of new views', () => {
+  it('restores the persisted issues-and-prs view on hydration', () => {
+    const store = createUIStore()
+
+    store
+      .getState()
+      .hydratePersistedUI(makePersistedUI({ activeView: 'issues-and-prs' }), 'startup')
+
+    expect(store.getState().activeView).toBe('issues-and-prs')
+  })
+
+  it('restores the persisted teams view on hydration', () => {
+    const store = createUIStore()
+
+    store.getState().hydratePersistedUI(makePersistedUI({ activeView: 'teams' }), 'startup')
+
+    expect(store.getState().activeView).toBe('teams')
+  })
+})

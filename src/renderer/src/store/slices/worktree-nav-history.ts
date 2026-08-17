@@ -13,7 +13,7 @@ import { parseWorkspaceKey } from '../../../../shared/workspace-scope'
 const MAX_HISTORY = 50
 
 // Why: entries may be page sentinels, not just worktree IDs; names keep the "worktree" prefix for call-site stability.
-export type WorktreeNavHistorySimpleViewEntry = 'tasks' | 'automations'
+export type WorktreeNavHistorySimpleViewEntry = 'tasks' | 'automations' | 'issues-and-prs' | 'teams'
 export type WorktreeNavHistoryTaskDetailEntry =
   | {
       kind: 'task-detail'
@@ -76,8 +76,14 @@ export function setWorktreeNavViewActivator(fn: ViewActivateFn | null): void {
 }
 
 // Why: view entries count as live unconditionally — findWorktreeById can't resolve page sentinels.
+const SIMPLE_VIEW_ENTRIES: ReadonlySet<string> = new Set([
+  'tasks',
+  'automations',
+  'issues-and-prs',
+  'teams'
+])
 function isViewEntry(entry: WorktreeNavHistoryEntry): entry is WorktreeNavHistoryViewEntry {
-  return entry === 'tasks' || entry === 'automations' || typeof entry === 'object'
+  return typeof entry === 'object' || (typeof entry === 'string' && SIMPLE_VIEW_ENTRIES.has(entry))
 }
 
 function isTaskStackEntry(entry: WorktreeNavHistoryEntry): boolean {
@@ -86,7 +92,7 @@ function isTaskStackEntry(entry: WorktreeNavHistoryEntry): boolean {
 
 function getHistoryEntryKey(entry: WorktreeNavHistoryEntry): string {
   if (typeof entry === 'string') {
-    return entry === 'tasks' || entry === 'automations' ? `view:${entry}` : `worktree:${entry}`
+    return SIMPLE_VIEW_ENTRIES.has(entry) ? `view:${entry}` : `worktree:${entry}`
   }
   if (entry.source === 'github') {
     const sourceScope =

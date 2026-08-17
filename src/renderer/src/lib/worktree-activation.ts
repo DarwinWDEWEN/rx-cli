@@ -754,7 +754,7 @@ setWorktreeNavActivator(activateAndRevealWorkspace)
 
 // Why: page entries replay via setActiveView (not open*Page) so back/forward doesn't mutate previousViewBefore* or duplicate history (see navigateToIndex).
 setWorktreeNavViewActivator((entry) => {
-  if (entry === 'automations') {
+  if (entry === 'automations' || entry === 'issues-and-prs' || entry === 'teams') {
     useAppStore.getState().setActiveView(entry)
     return
   }
