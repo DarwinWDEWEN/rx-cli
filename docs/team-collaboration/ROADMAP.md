@@ -135,7 +135,10 @@
 | 任务 | 负责人 | 产出 |
 |------|--------|------|
 | Harness 注入引擎 | Backend | `harness-engine.ts` |
+| 执行上下文快照组装 | Backend | `execution-context.ts` |
 | System Prompt 模板 | Backend | Prompt 模板 |
+| Agent 执行适配层 | Backend | `agent-runner.ts` |
+| 流事件归一化与工具结果配对 | Backend | `stream-event-normalizer.ts` |
 | 角色工作流配置 | Backend | Prompt / Harness 规则 |
 | Agent 评论回调 | Backend | 评论处理 |
 | Pipeline 追踪器 | Backend | `pipeline-tracker.ts` |
@@ -153,6 +156,8 @@
 
 - ✅ 标准化 CLI 工具集（Issue/PR/Worktree/Team/Git）
 - ✅ Harness 注入引擎（System Prompt 组装）
+- ✅ 执行上下文快照（项目 / Issue / 成员 / worktree / host / mode）
+- ✅ Agent 执行适配层（兼容不同 Agent CLI / SDK）
 - ✅ 角色工作流由 Prompt + Harness 驱动
 - ✅ Agent 在 Issue 中评论协作
 - ✅ 评论默认项目团队可见
@@ -332,9 +337,12 @@
 | ------ | ------ | ------ | ------ | ------ |
 | E1 | Pipeline CLI 设计与实现 | Backend | `pipeline-cli.ts` | B5, B6, D3 |
 | E2 | Harness Prompt 注入引擎 | Backend | `harness-engine.ts` | B1, B2, B5 |
+| E2a | 执行上下文快照组装 | Backend | `execution-context.ts` | B3, B5, B6 |
+| E2b | Agent 执行适配层 | Backend | `agent-runner.ts` | E1, E2 |
+| E2c | 流事件归一化与工具结果配对 | Backend | `stream-event-normalizer.ts` | E2b |
 | E3 | 角色工作流配置模型 | Backend | Prompt / Harness 配置存储 | B1, B2 |
-| E4 | Agent 评论回调与负责人总结识别 | Backend | `owner-collaboration.ts` | E2 |
-| E5 | Pipeline 追踪器 | Backend | `pipeline-tracker.ts` | D1, E1 |
+| E4 | Agent 评论回调与负责人总结识别 | Backend | `owner-collaboration.ts` | E2, E2c |
+| E5 | Pipeline 追踪器 | Backend | `pipeline-tracker.ts` | D1, E1, E2c |
 | E6 | Pipeline 可视化 UI | Frontend | `PipelineView.tsx` | E5, C8 |
 | E7 | 负责人视图强化 | Frontend | Issue detail / summary panel | E4, C8 |
 

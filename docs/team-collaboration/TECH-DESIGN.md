@@ -73,6 +73,9 @@ src/
 │   ├── pipeline/                   # 【新增】Pipeline Harness
 │   │   ├── pipeline-cli.ts
 │   │   ├── harness-engine.ts
+│   │   ├── execution-context.ts    # 组装 Agent 运行时上下文快照
+│   │   ├── agent-runner.ts         # 统一封装不同 Agent CLI / SDK 的执行入口
+│   │   ├── stream-event-normalizer.ts # 归一化 Agent 流事件与工具调用结果
 │   │   ├── convergence-rules.ts
 │   │   └── ipc.ts
 │   │
@@ -743,7 +746,80 @@ ${assignment.task}
 }
 ```
 
-### 6.3 收敛规则引擎
+### 6.3 Agent 执行适配层
+
+参考 CodeBuddy NPC 的 Agent SDK 分层实现后，本项目需要把 Harness 拆成 4 个明确边界：
+
+1. **环境校验 / 上下文快照**：确认当前执行所需的项目、Issue、成员、宿主、worktree、工作模式都存在
+2. **Prompt 构建**：将角色规则和当前任务输入分开构建，避免业务层直接拼字符串
+3. **执行适配**：用统一接口驱动不同 Agent CLI / SDK，而不是在业务流程里分支判断
+4. **流事件归一化**：把不同执行器返回的文本、thinking、tool_use、tool_result、结束状态映射成统一事件
+
+```typescript
+export type HarnessExecutionContext = {
+  projectId: string;
+  projectPath: string;
+  hostId: string;
+  hostType: Project['hostType'];
+  issueId: string;
+  issueNumber: number;
+  worklineKey: string;
+  memberId: string;
+  role: string;
+  assignmentTask: string;
+  worktreePath: string;
+  workMode: 'execute' | 'review' | 'ask';
+};
+
+export type AgentExecutionPolicy = {
+  maxTurns: number;
+  firstTokenTimeoutMs: number;
+  idleTimeoutMs: number;
+  allowedTools: string[];
+  requireProgressComment: boolean;
+};
+
+export type AgentRunEvent =
+  | { type: 'thinking'; text: string }
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; toolName: string; callId: string }
+  | { type: 'tool_result'; toolName: string; callId: string; content: string }
+  | { type: 'result'; status: 'success' | 'failed'; summary?: string };
+
+export interface AgentRunner {
+  run(request: {
+    agentType: TeamMember['agentType'];
+    command: string;
+    env: Record<string, string>;
+    context: HarnessExecutionContext;
+    policy: AgentExecutionPolicy;
+    systemPrompt: string;
+    userPrompt: string;
+  }): AsyncIterable<AgentRunEvent>;
+}
+```
+
+设计要求：
+
+- `execution-context.ts` 负责生成上下文快照，缺少关键字段时直接 fail fast
+- `harness-engine.ts` 只负责 `systemPrompt / userPrompt` 构建，不直接启动 Agent
+- `agent-runner.ts` 负责适配不同 Agent 的命令行、环境变量、模型参数和超时策略
+- `stream-event-normalizer.ts` 负责处理工具调用配对、孤儿事件告警、结构化日志和最终状态输出
+
+从 CodeBuddy SDK 中可直接借鉴的点：
+
+- **Prompt 分层**：`systemPrompt` 放角色与规则，`userPrompt` 放场景与输入
+- **执行策略显式化**：最大轮次、超时、工具白名单、遥测开关不应散落在业务代码中
+- **工具调用配对**：需要维护 `tool_use -> tool_result` 对应关系，避免日志和追踪断链
+- **结果统一出口**：无论成功失败，都应输出统一的完成事件和统计摘要
+
+不直接照搬的点：
+
+- 不依赖 `CNB_*` 这类平台变量命名
+- 不把容器入口脚本当成 Orca 的产品入口
+- 不默认使用 `bypassPermissions` 这类与 CNB Bot 场景强绑定的 SDK 选项
+
+### 6.4 收敛规则引擎
 
 ```typescript
 export class ConvergenceEngine {
@@ -776,6 +852,10 @@ const terminal = await this.runtime.createTerminal(`id:${worktree.id}`, {
     ORCA_ISSUE_ID: issue.id,
     ORCA_MEMBER_ID: member.id,
     ORCA_PROJECT_HOST_ID: project.hostId,
+    ORCA_WORKTREE_PATH: worktree.path,
+    ORCA_WORKLINE_KEY: issue.worklineKey,
+    ORCA_ASSIGNMENT_TASK: assignment.task,
+    ORCA_WORK_MODE: 'execute',
     ORCA_HARNESS_PROMPT: systemPrompt,
   },
 });
@@ -785,12 +865,13 @@ const terminal = await this.runtime.createTerminal(`id:${worktree.id}`, {
 
 - **项目 / worktree / terminal / git 执行**：直接复用 Orca
 - **连接层 / 宿主差异 / SSH / WSL / remote**：直接复用 Orca
-- **需要新增的只是协作域元数据**：Teams、项目团队、Issue 工作线、Harness 配置、状态机
+- **需要新增的只是协作域元数据与执行上下文层**：Teams、项目团队、Issue 工作线、Harness 配置、上下文快照、状态机
 
 因此问题不在“能不能复用 Orca”，而在“要不要把协作域状态补齐”。本方案选择：
 
 - **执行层全部复用 Orca**
 - **业务层新增轻量协作模型**
+- **Agent 适配层只做薄封装，不重复实现 Orca runtime**
 
 ### 7.2 宿主兼容性
 

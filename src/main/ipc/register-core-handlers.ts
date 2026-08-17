@@ -52,6 +52,9 @@ import { registerShellHandlers } from './shell'
 import { registerPetHandlers } from './pet'
 import { registerPluginHandlers } from './plugins'
 import { registerUIHandlers, setTrustedUIRendererWebContentsId } from './ui'
+import { registerCollaborationTeamHandlers } from './collaboration-teams'
+import { registerCollaborationProjectHandlers } from './collaboration-projects'
+import { registerCollaborationIssueHandlers } from './collaboration-issues'
 import { registerEmulatorFrameStreamHandlers } from './emulator-frame-stream'
 import { registerEmulatorVideoStreamHandlers } from './emulator-video-stream'
 import { registerSpeechHandlers } from './speech'
@@ -231,4 +234,10 @@ export function registerCoreHandlers(
   registerClipboardHandlers(store)
   registerUpdaterHandlers(store)
   registerSpeechHandlers(store)
+
+  // Why: collaboration handlers are registered last — they depend on the
+  // collaboration database being initialized elsewhere in app startup.
+  registerCollaborationTeamHandlers()
+  registerCollaborationProjectHandlers()
+  registerCollaborationIssueHandlers()
 }

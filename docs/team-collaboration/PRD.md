@@ -48,6 +48,7 @@ Orca 现有的核心能力：
 | 项目团队全员可见 | Issue/PR 评论默认对项目团队成员可见 |
 | 复用 Tasks 能力 | 不修改 Tasks，创建并列的 Issues and PRs 面板 |
 | 复用 Orca 宿主能力 | 本地、SSH、WSL、多宿主执行沿用 Orca 现有能力 |
+| Harness 是运行时约束层 | 通过上下文注入、Prompt 规则、评论回写和收敛策略引导协作，而非硬编码审批流 |
 
 ---
 
@@ -605,6 +606,28 @@ System Prompt:
   - 禁止需求无限膨胀
   - 角色工作流由 Prompt 与 Harness 决定，不依赖固定审批模板
 ```
+
+### 7.3 Harness 运行时骨架
+
+参考 CodeBuddy NPC 的 harness 机制后，我们将 Harness 定义为一层运行时骨架，而不是固定流程模板。对本项目而言，Harness 至少要覆盖以下 5 层：
+
+| 层级 | 作用 | 在 Orca 协作模块中的落点 |
+|------|------|------|
+| 事件入口 | 决定何时拉起协作执行 | Issue 创建、负责人分派、Issue 评论、PR 状态变化 |
+| 场景上下文 | 让 Agent 知道自己在谁的项目、哪条工作线、以什么身份工作 | `project / issue / workline / member / assignment / worktree / host / workMode` |
+| Prompt 约束 | 约束角色职责、反馈格式、scope 边界 | `defaultPrompt + skills + personality + Harness 规则` |
+| 执行适配 | 将统一的上下文交给不同 Agent CLI / SDK 去执行 | 复用 Orca terminal/runtime，适配不同 agentType |
+| 反馈闭环 | 关键动作后回写评论、状态和结果 | Issue 评论、PR 评论、活动日志、负责人总结 |
+
+这意味着我们后续实现不应只做一段 `systemPrompt` 字符串拼接，而应显式建设：
+
+1. 事件触发点
+2. 上下文注入模型
+3. Agent 执行适配层
+4. 评论 / 状态回写闭环
+5. 收敛与超时规则
+
+CodeBuddy 的 CNB 平台入口、容器环境和 `CNB_*` 变量不能直接照搬；但其将 `systemPrompt / userPrompt / executor / feedback loop` 解耦的方式，对 Orca 版 Harness 有直接参考价值。
 
 ---
 
