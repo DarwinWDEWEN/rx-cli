@@ -55,6 +55,7 @@ import { registerUIHandlers, setTrustedUIRendererWebContentsId } from './ui'
 import { registerCollaborationTeamHandlers } from './collaboration-teams'
 import { registerCollaborationProjectHandlers } from './collaboration-projects'
 import { registerCollaborationIssueHandlers } from './collaboration-issues'
+import { registerCollaborationGitHandlers } from './collaboration-git'
 import { registerEmulatorFrameStreamHandlers } from './emulator-frame-stream'
 import { registerEmulatorVideoStreamHandlers } from './emulator-video-stream'
 import { registerSpeechHandlers } from './speech'
@@ -240,4 +241,5 @@ export function registerCoreHandlers(
   registerCollaborationTeamHandlers()
   registerCollaborationProjectHandlers()
   registerCollaborationIssueHandlers()
+  registerCollaborationGitHandlers()
 }

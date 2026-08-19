@@ -185,6 +185,80 @@ describe('collaboration IPC handlers', () => {
       }
       expect(fetched.gitInitialized).toBe(true)
     })
+
+    it('project:changeOwner switches owner role correctly', () => {
+      const alice = teamStore.create({
+        name: 'Alice',
+        role: 'lead',
+        agentType: 'claude',
+        agentModel: 'claude-sonnet',
+        personality: '',
+        responsibilities: [],
+        capabilities: [],
+        agentConfig: {},
+        skills: [],
+        defaultPrompt: '',
+        isActive: true,
+        hostType: 'local',
+        workspaceAccess: []
+      })
+      const bob = teamStore.create({
+        name: 'Bob',
+        role: 'member',
+        agentType: 'claude',
+        agentModel: 'claude-sonnet',
+        personality: '',
+        responsibilities: [],
+        capabilities: [],
+        agentConfig: {},
+        skills: [],
+        defaultPrompt: '',
+        isActive: true,
+        hostType: 'local',
+        workspaceAccess: []
+      })
+
+      const project = invoke('project:register', {
+        name: 'Test Project',
+        hostId: 'local',
+        hostType: 'local',
+        repoPath: '/tmp/test-repo'
+      }) as { id: string }
+
+      invoke('project:inviteMember', {
+        projectId: project.id,
+        memberId: alice.id,
+        roleInProject: 'owner'
+      })
+      invoke('project:inviteMember', {
+        projectId: project.id,
+        memberId: bob.id,
+        roleInProject: 'member'
+      })
+
+      invoke('project:changeOwner', { projectId: project.id, newOwnerMemberId: bob.id })
+
+      const members = invoke('project:listMembers', { projectId: project.id }) as {
+        memberId: string
+        roleInProject: string
+      }[]
+      const aliceMember = members.find((m) => m.memberId === alice.id)
+      const bobMember = members.find((m) => m.memberId === bob.id)
+      expect(aliceMember?.roleInProject).toBe('member')
+      expect(bobMember?.roleInProject).toBe('owner')
+    })
+
+    it('project:changeOwner rejects missing projectId (Zod validation)', () => {
+      expect(() =>
+        invoke('project:changeOwner', { projectId: '', newOwnerMemberId: 'tm_123' })
+      ).toThrow()
+    })
+
+    it('project:changeOwner rejects missing newOwnerMemberId (Zod validation)', () => {
+      expect(() =>
+        invoke('project:changeOwner', { projectId: 'proj_123', newOwnerMemberId: '' })
+      ).toThrow()
+    })
   })
 
   describe('issue.*', () => {

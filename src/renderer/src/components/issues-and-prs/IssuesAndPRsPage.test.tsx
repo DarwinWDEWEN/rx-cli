@@ -6,6 +6,23 @@ import type { Issue, Project } from '../../../../shared/team-types'
 
 const mockProjectList = vi.fn<() => Promise<Project[]>>()
 const mockIssueListByProject = vi.fn<(args: { projectId: string }) => Promise<Issue[]>>()
+const mockProjectRegister =
+  vi.fn<
+    (args: {
+      name: string
+      hostId: string
+      hostType: string
+      repoPath: string
+      defaultBranch?: string
+    }) => Promise<Project>
+  >()
+const mockMarkGitInitialized =
+  vi.fn<(args: { id: string; initialized?: boolean }) => Promise<void>>()
+const mockProbeGit = vi.fn<(args: { path: string }) => Promise<{ isGitRepo: boolean }>>()
+const mockInitGitRepo = vi.fn<(args: { path: string }) => Promise<{ initialized: boolean }>>()
+const mockTeamList = vi.fn<() => Promise<{ id: string; name: string }[]>>()
+const mockProjectListMembers =
+  vi.fn<(args: { projectId: string }) => Promise<{ memberId: string; roleInProject: string }[]>>()
 
 vi.mock('sonner', () => ({
   toast: {
@@ -67,16 +84,33 @@ describe('IssuesAndPRsPage', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders empty project state when no projects exist', async () => {
-    mockProjectList.mockResolvedValue([])
-    mockIssueListByProject.mockResolvedValue([])
+  function setupApiMocks(): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any).api = {
       collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
+        project: {
+          list: mockProjectList,
+          register: mockProjectRegister,
+          markGitInitialized: mockMarkGitInitialized,
+          listMembers: mockProjectListMembers
+        },
+        issue: { listByProject: mockIssueListByProject },
+        team: { list: mockTeamList },
+        git: {
+          probeGit: mockProbeGit,
+          initGitRepo: mockInitGitRepo
+        }
+      },
+      repos: {
+        pickFolder: vi.fn<() => Promise<string | null>>()
       }
     }
+  }
+
+  it('renders empty project state when no projects exist', async () => {
+    mockProjectList.mockResolvedValue([])
+    mockIssueListByProject.mockResolvedValue([])
+    setupApiMocks()
     await renderIssuesAndPRsPage()
 
     await waitFor(() => {
@@ -92,13 +126,7 @@ describe('IssuesAndPRsPage', () => {
     ]
     mockProjectList.mockResolvedValue(projects)
     mockIssueListByProject.mockResolvedValue([])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).api = {
-      collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
-      }
-    }
+    setupApiMocks()
     await renderIssuesAndPRsPage()
 
     await waitFor(
@@ -118,13 +146,7 @@ describe('IssuesAndPRsPage', () => {
       makeIssue({ id: 'i1', number: 1, title: 'First Issue' }),
       makeIssue({ id: 'i2', number: 2, title: 'Second Issue' })
     ])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).api = {
-      collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
-      }
-    }
+    setupApiMocks()
     await renderIssuesAndPRsPage()
 
     await waitFor(
@@ -145,13 +167,7 @@ describe('IssuesAndPRsPage', () => {
   it('shows empty issue state when project has no issues', async () => {
     mockProjectList.mockResolvedValue([makeProject({ id: 'p1', name: 'Project A' })])
     mockIssueListByProject.mockResolvedValue([])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).api = {
-      collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
-      }
-    }
+    setupApiMocks()
     await renderIssuesAndPRsPage()
 
     await waitFor(
@@ -165,13 +181,7 @@ describe('IssuesAndPRsPage', () => {
   it('switches between Issues and PRs tabs', async () => {
     mockProjectList.mockResolvedValue([makeProject({ id: 'p1', name: 'Project A' })])
     mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).api = {
-      collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
-      }
-    }
+    setupApiMocks()
     await renderIssuesAndPRsPage()
 
     await waitFor(
@@ -194,13 +204,7 @@ describe('IssuesAndPRsPage', () => {
     const { toast } = await import('sonner')
     mockProjectList.mockRejectedValue(new Error('Network error'))
     mockIssueListByProject.mockResolvedValue([])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).api = {
-      collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
-      }
-    }
+    setupApiMocks()
     await renderIssuesAndPRsPage()
 
     await waitFor(() => {
@@ -231,13 +235,7 @@ describe('IssuesAndPRsPage', () => {
       return [makeIssue({ id: 'i-p2', projectId: 'p2', number: 100, title: 'P2 Issue' })]
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).api = {
-      collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
-      }
-    }
+    setupApiMocks()
 
     await renderIssuesAndPRsPage()
 
@@ -276,13 +274,9 @@ describe('IssuesAndPRsPage', () => {
   it('shows detail panel placeholder when issues exist', async () => {
     mockProjectList.mockResolvedValue([makeProject({ id: 'p1', name: 'Project A' })])
     mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).api = {
-      collaboration: {
-        project: { list: mockProjectList },
-        issue: { listByProject: mockIssueListByProject }
-      }
-    }
+    mockTeamList.mockResolvedValue([])
+    mockProjectListMembers.mockResolvedValue([])
+    setupApiMocks()
     await renderIssuesAndPRsPage()
 
     await waitFor(
@@ -292,7 +286,128 @@ describe('IssuesAndPRsPage', () => {
       { timeout: 5000 }
     )
 
-    // Detail panel placeholder should be visible
-    expect(screen.getByText(/Issue details coming soon/)).not.toBeNull()
+    // Click Detail tab to show detail placeholder (first button in tab switcher)
+    const tabButton = screen
+      .getAllByRole('button')
+      .find((btn) => btn.classList.contains('rounded-md') && btn.querySelector('svg'))
+    tabButton!.click()
+
+    await waitFor(() => {
+      // Detail panel placeholder should be visible
+      expect(screen.getByText(/Issue details coming soon/)).not.toBeNull()
+    })
+  })
+
+  // Why: C6a tests - empty project state with CTA
+  it('renders Add project CTA when no projects exist', async () => {
+    mockProjectList.mockResolvedValue([])
+    setupApiMocks()
+    await renderIssuesAndPRsPage()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add project/i)).not.toBeNull()
+    })
+  })
+
+  it('opens onboarding dialog when Add project is clicked', async () => {
+    mockProjectList.mockResolvedValue([])
+    setupApiMocks()
+    await renderIssuesAndPRsPage()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add project/i)).not.toBeNull()
+    })
+
+    const addButton = screen.getByText(/Add project/i)
+    addButton.click()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add Project/i)).not.toBeNull()
+    })
+  })
+
+  // Why: C7 tests - Project Team panel integration
+  it('shows Team tab in right panel', async () => {
+    const projects = [makeProject({ id: 'p1', name: 'Project A' })]
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
+    mockTeamList.mockResolvedValue([{ id: 'm1', name: 'Alice' }])
+    mockProjectListMembers.mockResolvedValue([{ memberId: 'm1', roleInProject: 'owner' }])
+    setupApiMocks()
+
+    await renderIssuesAndPRsPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Team')).not.toBeNull()
+    })
+  })
+
+  it('switches to Team tab and shows ProjectTeamPanel', async () => {
+    const projects = [makeProject({ id: 'p1', name: 'Project A' })]
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
+    mockTeamList.mockResolvedValue([{ id: 'm1', name: 'Alice' }])
+    mockProjectListMembers.mockResolvedValue([{ memberId: 'm1', roleInProject: 'owner' }])
+    setupApiMocks()
+
+    await renderIssuesAndPRsPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Team')).not.toBeNull()
+    })
+
+    // Click Team tab
+    const teamTab = screen.getByText('Team')
+    teamTab.click()
+
+    // Wait for ProjectTeamPanel to load and show member
+    await waitFor(
+      () => {
+        expect(screen.getByText('Alice')).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it('shows detail placeholder when Detail tab is active', async () => {
+    const projects = [makeProject({ id: 'p1', name: 'Project A' })]
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
+    mockTeamList.mockResolvedValue([])
+    mockProjectListMembers.mockResolvedValue([])
+    setupApiMocks()
+
+    await renderIssuesAndPRsPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Team')).not.toBeNull()
+    })
+
+    // Click Detail tab (first tab with ChevronRight icon)
+    const detailTab = screen.getByRole('button', { name: '' })
+    detailTab.click()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Issue details coming soon/)).not.toBeNull()
+    })
+  })
+
+  it('shows Team panel by default in right panel', async () => {
+    const projects = [makeProject({ id: 'p1', name: 'Project A' })]
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
+    mockTeamList.mockResolvedValue([{ id: 'm1', name: 'Alice' }])
+    mockProjectListMembers.mockResolvedValue([{ memberId: 'm1', roleInProject: 'owner' }])
+    setupApiMocks()
+
+    await renderIssuesAndPRsPage()
+
+    // Team tab should be shown by default
+    await waitFor(
+      () => {
+        expect(screen.getByText('Alice')).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
   })
 })

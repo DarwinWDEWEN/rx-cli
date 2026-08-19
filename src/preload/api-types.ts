@@ -129,6 +129,7 @@ import type {
   DeleteConstraintResult,
   Issue,
   Project as CollaborationProject,
+  ProjectTeamMember,
   TeamMemberRecord,
   UpdateTeamMemberInput
 } from '../shared/team-types'
@@ -2361,13 +2362,14 @@ export type PreloadApi = {
         status?: string
         defaultBranch?: string
       }) => Promise<CollaborationProject>
-      listMembers: (args: { projectId: string }) => Promise<TeamMemberRecord[]>
+      listMembers: (args: { projectId: string }) => Promise<ProjectTeamMember[]>
       inviteMember: (args: {
         projectId: string
         memberId: string
         roleInProject?: 'owner' | 'member'
       }) => Promise<void>
       removeMember: (args: { projectId: string; memberId: string }) => Promise<void>
+      changeOwner: (args: { projectId: string; newOwnerMemberId: string }) => Promise<void>
       markGitInitialized: (args: { id: string; initialized?: boolean }) => Promise<void>
     }
     issue: {
@@ -2391,6 +2393,10 @@ export type PreloadApi = {
         ownerId?: string
       }) => Promise<Issue>
       nextIssueNumber: (args: { projectId: string }) => Promise<number>
+    }
+    git: {
+      probeGit: (args: { path: string }) => Promise<{ isGitRepo: boolean }>
+      initGitRepo: (args: { path: string }) => Promise<{ initialized: boolean }>
     }
   }
   starNag: {

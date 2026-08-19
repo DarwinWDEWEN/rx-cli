@@ -81,6 +81,7 @@ export type ProjectStore = {
   inviteMember: (projectId: string, memberId: string, roleInProject?: string) => ProjectTeamMember
   removeMember: (projectId: string, memberId: string) => void
   listMembers: (projectId: string) => ProjectTeamMember[]
+  changeOwner: (projectId: string, newOwnerMemberId: string) => void
 }
 
 function prepareStatements(db: CollaborationDatabase) {
@@ -124,7 +125,15 @@ function prepareStatements(db: CollaborationDatabase) {
       SELECT COUNT(*) AS c FROM issue_worktrees iw
       JOIN issues i ON iw.issue_id = i.id
       WHERE i.project_id = ? AND iw.member_id = ? AND iw.status = 'active'
-    `)
+    `),
+    // Why: changeOwner atomically switches role_in_project between members
+    updateRoleInProject: db.prepare(
+      `UPDATE project_team_members SET role_in_project = ? WHERE project_id = ? AND member_id = ?`
+    ),
+    // Why: find current owner for changeOwner operation
+    selectCurrentOwner: db.prepare(
+      `SELECT * FROM project_team_members WHERE project_id = ? AND role_in_project = 'owner'`
+    )
   }
 }
 
@@ -268,6 +277,52 @@ export function createProjectStore(deps: CreateProjectStoreDeps = {}): ProjectSt
     listMembers(projectId) {
       const rows = stmts.selectAllTeamMembers.all(projectId) as ProjectTeamMemberRow[]
       return rows.map(rowToProjectTeamMember)
+    },
+
+    changeOwner(projectId, newOwnerMemberId) {
+      const project = stmts.selectProject.get(projectId) as ProjectRow | undefined
+      if (!project) {
+        throw new Error(`Project not found: ${projectId}`)
+      }
+
+      // Why: new owner must be a valid team member
+      const newOwner = teamStore.get(newOwnerMemberId)
+      if (!newOwner) {
+        throw new Error(`Team member not found: ${newOwnerMemberId}`)
+      }
+
+      // Why: find current owner to downgrade to member
+      const currentOwner = stmts.selectCurrentOwner.get(projectId) as
+        | ProjectTeamMemberRow
+        | undefined
+
+      // Why: ensure new owner is in the project team; if not, invite them first
+      const existingMembership = stmts.selectTeamMember.get(projectId, newOwnerMemberId) as
+        | ProjectTeamMemberRow
+        | undefined
+
+      // Why: atomic role switch + conditional invite in single transaction
+      try {
+        db.exec('BEGIN;')
+        if (!existingMembership) {
+          const id = `ptm_${randomBytes(8).toString('hex')}`
+          stmts.insertTeamMember.run(
+            id,
+            projectId,
+            newOwnerMemberId,
+            'member',
+            new Date().toISOString()
+          )
+        }
+        if (currentOwner) {
+          stmts.updateRoleInProject.run('member', projectId, currentOwner.member_id)
+        }
+        stmts.updateRoleInProject.run('owner', projectId, newOwnerMemberId)
+        db.exec('COMMIT;')
+      } catch (err) {
+        db.exec('ROLLBACK;')
+        throw err
+      }
     }
   }
 }

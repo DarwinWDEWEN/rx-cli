@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronRight, GitPullRequestArrow, Loader2 } from 'lucide-react'
+import { ChevronRight, GitPullRequestArrow, Loader2, Plus, Users } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import type { Issue, Project } from '../../../../shared/team-types'
 import { translate } from '@/i18n/i18n'
+import { ProjectOnboardingDialog } from './project-onboarding/ProjectOnboardingDialog'
+import { useActiveWorkspaceSource } from './project-onboarding/use-active-workspace-source'
+import { ProjectTeamPanel } from './ProjectTeamPanel'
 
 type ViewTab = 'issues' | 'prs'
+type DetailTab = 'detail' | 'team'
 
-function EmptyProjectState(): React.JSX.Element {
+function EmptyProjectState({ onAddProject }: { onAddProject: () => void }): React.JSX.Element {
   return (
     <div className="flex flex-1 items-center justify-center p-8">
       <div className="flex max-w-sm flex-col items-center gap-3 text-center">
@@ -25,6 +30,10 @@ function EmptyProjectState(): React.JSX.Element {
             )}
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={onAddProject}>
+          <Plus className="size-4" />
+          {translate('auto.components.issuesAndPRs.IssuesAndPRsPage.addProject', 'Add project')}
+        </Button>
       </div>
     </div>
   )
@@ -131,6 +140,9 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [loadingIssues, setLoadingIssues] = useState(false)
   const [activeTab, setActiveTab] = useState<ViewTab>('issues')
+  const [detailTab, setDetailTab] = useState<DetailTab>('team')
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const activeWorkspace = useActiveWorkspaceSource()
   const mountedRef = useRef(true)
   // Why: track request order to discard stale responses when switching projects rapidly
   const requestIdRef = useRef(0)
@@ -210,6 +222,15 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
     }
   }, [selectedProjectId, loadIssues])
 
+  const handleOnboardingComplete = useCallback(
+    (project: Project) => {
+      // Why: refresh project list and select the newly created project
+      void loadProjects()
+      setSelectedProjectId(project.id)
+    },
+    [loadProjects]
+  )
+
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
@@ -221,7 +242,7 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
       {loadingProjects ? (
         <LoadingState />
       ) : projects.length === 0 ? (
-        <EmptyProjectState />
+        <EmptyProjectState onAddProject={() => setOnboardingOpen(true)} />
       ) : (
         <div className="flex h-full flex-col gap-4">
           {/* Project selector */}
@@ -286,9 +307,39 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
                 )}
               </div>
 
-              {/* Detail panel (right column) - structure placeholder */}
+              {/* Detail panel (right column) */}
               <div className="flex w-1/2 flex-col rounded-md border">
-                <IssueDetailPlaceholder />
+                {/* Detail/Team tab switcher */}
+                <div className="flex gap-1 border-b p-2">
+                  <button
+                    type="button"
+                    onClick={() => setDetailTab('detail')}
+                    className={`rounded-md px-2 py-1 text-xs ${
+                      detailTab === 'detail'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <ChevronRight className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailTab('team')}
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs ${
+                      detailTab === 'team'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Users className="size-3" />
+                    {translate('auto.components.issuesAndPRs.IssuesAndPRsPage.team', 'Team')}
+                  </button>
+                </div>
+                {detailTab === 'detail' ? (
+                  <IssueDetailPlaceholder />
+                ) : (
+                  <ProjectTeamPanel projectId={selectedProjectId!} />
+                )}
               </div>
             </div>
           ) : (
@@ -296,6 +347,15 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
           )}
         </div>
       )}
+
+      <ProjectOnboardingDialog
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        initialPath={activeWorkspace.path}
+        initialHostId={activeWorkspace.hostId}
+        initialHostType={activeWorkspace.hostType}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   )
 }

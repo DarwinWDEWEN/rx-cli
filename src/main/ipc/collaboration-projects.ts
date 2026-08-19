@@ -45,6 +45,11 @@ const removeMemberSchema = z.object({
   memberId: z.string().min(1)
 })
 
+const changeOwnerSchema = z.object({
+  projectId: z.string().min(1),
+  newOwnerMemberId: z.string().min(1)
+})
+
 const projectIdArgsSchema = z.object({ projectId: z.string().min(1) })
 
 export function registerCollaborationProjectHandlers(): void {
@@ -90,5 +95,10 @@ export function registerCollaborationProjectHandlers(): void {
   ipcMain.handle('project:markGitInitialized', (_event, args: unknown) => {
     const input = markGitInitializedSchema.parse(args)
     getProjectStore().markGitInitialized(input.id, input.initialized)
+  })
+
+  ipcMain.handle('project:changeOwner', (_event, args: unknown) => {
+    const input = changeOwnerSchema.parse(args)
+    getProjectStore().changeOwner(input.projectId, input.newOwnerMemberId)
   })
 }

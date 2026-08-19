@@ -36,6 +36,7 @@ import type {
   DeleteConstraintResult,
   Issue,
   Project as CollaborationProject,
+  ProjectTeamMember,
   TeamMemberRecord,
   UpdateTeamMemberInput
 } from '../shared/team-types'
@@ -2032,7 +2033,7 @@ const api = {
         status?: string
         defaultBranch?: string
       }): Promise<CollaborationProject> => ipcRenderer.invoke('project:update', args),
-      listMembers: (args: { projectId: string }): Promise<TeamMemberRecord[]> =>
+      listMembers: (args: { projectId: string }): Promise<ProjectTeamMember[]> =>
         ipcRenderer.invoke('project:listMembers', args),
       inviteMember: (args: {
         projectId: string
@@ -2041,6 +2042,8 @@ const api = {
       }): Promise<void> => ipcRenderer.invoke('project:inviteMember', args),
       removeMember: (args: { projectId: string; memberId: string }): Promise<void> =>
         ipcRenderer.invoke('project:removeMember', args),
+      changeOwner: (args: { projectId: string; newOwnerMemberId: string }): Promise<void> =>
+        ipcRenderer.invoke('project:changeOwner', args),
       markGitInitialized: (args: { id: string; initialized?: boolean }): Promise<void> =>
         ipcRenderer.invoke('project:markGitInitialized', args)
     },
@@ -2068,6 +2071,12 @@ const api = {
       }): Promise<Issue> => ipcRenderer.invoke('issue:update', args),
       nextIssueNumber: (args: { projectId: string }): Promise<number> =>
         ipcRenderer.invoke('issue:nextIssueNumber', args)
+    },
+    git: {
+      probeGit: (args: { path: string }): Promise<{ isGitRepo: boolean }> =>
+        ipcRenderer.invoke('collaboration:probeGit', args),
+      initGitRepo: (args: { path: string }): Promise<{ initialized: boolean }> =>
+        ipcRenderer.invoke('collaboration:initGitRepo', args)
     }
   },
 

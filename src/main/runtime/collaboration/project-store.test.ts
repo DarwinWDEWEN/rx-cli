@@ -224,6 +224,134 @@ describe('project store', () => {
     expect(() => store.removeMember(p.id, m.id)).toThrow(/open issue/)
     expect(store.listMembers(p.id)).toHaveLength(1) // still a member
   })
+
+  // Why: C7d — changeOwner atomically switches owner role
+  it('changeOwner switches owner role correctly', () => {
+    const p = store.register({
+      name: 'Proj',
+      hostId: 'local',
+      hostType: 'local',
+      repoPath: testDir
+    })
+    const alice = makeMember('Alice')
+    const bob = makeMember('Bob')
+
+    store.inviteMember(p.id, alice.id, 'owner')
+    store.inviteMember(p.id, bob.id, 'member')
+
+    store.changeOwner(p.id, bob.id)
+
+    const members = store.listMembers(p.id)
+    const aliceMember = members.find((m) => m.memberId === alice.id)
+    const bobMember = members.find((m) => m.memberId === bob.id)
+    expect(aliceMember?.roleInProject).toBe('member')
+    expect(bobMember?.roleInProject).toBe('owner')
+  })
+
+  it('changeOwner invites new owner if not in project', () => {
+    const p = store.register({
+      name: 'Proj',
+      hostId: 'local',
+      hostType: 'local',
+      repoPath: testDir
+    })
+    const alice = makeMember('Alice')
+    const charlie = makeMember('Charlie')
+
+    store.inviteMember(p.id, alice.id, 'owner')
+    // Charlie is not in project yet
+    store.changeOwner(p.id, charlie.id)
+
+    const members = store.listMembers(p.id)
+    expect(members).toHaveLength(2)
+    const charlieMember = members.find((m) => m.memberId === charlie.id)
+    expect(charlieMember?.roleInProject).toBe('owner')
+  })
+
+  it('changeOwner throws for unknown project', () => {
+    const alice = makeMember('Alice')
+    expect(() => store.changeOwner('proj_missing', alice.id)).toThrow(/Project not found/)
+  })
+
+  it('changeOwner throws for unknown team member', () => {
+    const p = store.register({
+      name: 'Proj',
+      hostId: 'local',
+      hostType: 'local',
+      repoPath: testDir
+    })
+    expect(() => store.changeOwner(p.id, 'tm_missing')).toThrow(/Team member not found/)
+  })
+
+  it('changeOwner preserves old owner open issues', () => {
+    const db = dbMod.getCollaborationDb()
+    const p = store.register({
+      name: 'Proj',
+      hostId: 'local',
+      hostType: 'local',
+      repoPath: testDir
+    })
+    const alice = makeMember('Alice')
+    const bob = makeMember('Bob')
+
+    store.inviteMember(p.id, alice.id, 'owner')
+    store.inviteMember(p.id, bob.id, 'member')
+
+    // Alice has an open issue
+    db.prepare(
+      `INSERT INTO issues (id, project_id, number, title, status, priority, owner_id, workline_key, workline_state, created_at, updated_at)
+       VALUES ('i1', ?, 1, 'Bug', 'open', 'medium', ?, 'wl-1', 'intake', '2026-01-01', '2026-01-01')`
+    ).run(p.id, alice.id)
+
+    store.changeOwner(p.id, bob.id)
+
+    // Alice's issue should still belong to her
+    const issue = db.prepare('SELECT owner_id FROM issues WHERE id = ?').get('i1') as {
+      owner_id: string
+    }
+    expect(issue.owner_id).toBe(alice.id)
+  })
+
+  // Why: B1 — changeOwner insert must be in transaction (rollback on failure leaves no orphan)
+  it('changeOwner rolls back insert when update fails', async () => {
+    const p = store.register({
+      name: 'Proj',
+      hostId: 'local',
+      hostType: 'local',
+      repoPath: testDir
+    })
+    const alice = makeMember('Alice')
+    const charlie = makeMember('Charlie')
+
+    store.inviteMember(p.id, alice.id, 'owner')
+
+    // Why: spy on SyncDatabase.prototype.exec to simulate COMMIT failure
+    const { default: SyncDatabase } = await import('../../sqlite/sync-database')
+    const origExec = SyncDatabase.prototype.exec
+    let execCount = 0
+    SyncDatabase.prototype.exec = function execSpy(
+      this: typeof SyncDatabase.prototype,
+      ...args: [string]
+    ) {
+      execCount++
+      // Let BEGIN (1st) pass, fail on COMMIT (2nd) to trigger ROLLBACK
+      if (execCount === 2) {
+        throw new Error('simulated commit failure')
+      }
+      return origExec.apply(this, args)
+    }
+
+    try {
+      expect(() => store.changeOwner(p.id, charlie.id)).toThrow(/simulated commit failure/)
+    } finally {
+      SyncDatabase.prototype.exec = origExec
+    }
+
+    // Why: Charlie should NOT be in the project team after rollback
+    const members = store.listMembers(p.id)
+    expect(members).toHaveLength(1) // only alice, no charlie
+    expect(members.find((m) => m.memberId === charlie.id)).toBeUndefined()
+  })
 })
 
 function randomSuffix(): string {

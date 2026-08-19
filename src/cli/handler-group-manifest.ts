@@ -239,5 +239,10 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'skills',
     keys: ['skills list', 'skills get', 'skills install', 'skills update'],
     load: async () => (await import('./handlers/skills.js')).SKILL_HANDLERS
+  },
+  {
+    name: 'collaboration',
+    keys: ['issue comment', 'issue update', 'issue get', 'issue list'],
+    load: async () => (await import('./handlers/collaboration.js')).COLLABORATION_HANDLERS
   }
 ]
