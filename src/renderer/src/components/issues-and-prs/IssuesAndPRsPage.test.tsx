@@ -247,6 +247,11 @@ describe('IssuesAndPRsPage', () => {
       { timeout: 5000 }
     )
 
+    // Wait for select element to be present
+    await waitFor(() => {
+      expect(document.querySelector('select')).not.toBeNull()
+    })
+
     // Switch to p2 while p1 request is still pending
     const select = document.querySelector('select') as HTMLSelectElement
     const { fireEvent } = await import('@testing-library/react')
@@ -271,7 +276,7 @@ describe('IssuesAndPRsPage', () => {
     expect(screen.queryByText(/Stale P1 Issue/)).toBeNull()
   })
 
-  it('shows detail panel placeholder when issues exist', async () => {
+  it('shows detail panel empty state when Detail tab is clicked', async () => {
     mockProjectList.mockResolvedValue([makeProject({ id: 'p1', name: 'Project A' })])
     mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
     mockTeamList.mockResolvedValue([])
@@ -286,15 +291,15 @@ describe('IssuesAndPRsPage', () => {
       { timeout: 5000 }
     )
 
-    // Click Detail tab to show detail placeholder (first button in tab switcher)
+    // Click Detail tab to show detail panel (first button in tab switcher)
     const tabButton = screen
       .getAllByRole('button')
       .find((btn) => btn.classList.contains('rounded-md') && btn.querySelector('svg'))
     tabButton!.click()
 
     await waitFor(() => {
-      // Detail panel placeholder should be visible
-      expect(screen.getByText(/Issue details coming soon/)).not.toBeNull()
+      // Detail panel empty state should be visible
+      expect(screen.getByText(/Select an issue to view details/)).not.toBeNull()
     })
   })
 
@@ -369,7 +374,7 @@ describe('IssuesAndPRsPage', () => {
     )
   })
 
-  it('shows detail placeholder when Detail tab is active', async () => {
+  it('shows detail empty state when Detail tab is active', async () => {
     const projects = [makeProject({ id: 'p1', name: 'Project A' })]
     mockProjectList.mockResolvedValue(projects)
     mockIssueListByProject.mockResolvedValue([makeIssue({ id: 'i1', title: 'An Issue' })])
@@ -383,12 +388,12 @@ describe('IssuesAndPRsPage', () => {
       expect(screen.getByText('Team')).not.toBeNull()
     })
 
-    // Click Detail tab (first tab with ChevronRight icon)
-    const detailTab = screen.getByRole('button', { name: '' })
+    // Click Detail tab (now has aria-label="Detail")
+    const detailTab = screen.getByRole('button', { name: 'Detail' })
     detailTab.click()
 
     await waitFor(() => {
-      expect(screen.getByText(/Issue details coming soon/)).not.toBeNull()
+      expect(screen.getByText(/Select an issue to view details/)).not.toBeNull()
     })
   })
 
@@ -409,5 +414,36 @@ describe('IssuesAndPRsPage', () => {
       },
       { timeout: 5000 }
     )
+  })
+
+  // Why: C8 fix - selecting an issue auto-switches to detail panel
+  it('shows issue detail when issue is selected', async () => {
+    const projects = [makeProject({ id: 'p1', name: 'Project A' })]
+    mockProjectList.mockResolvedValue(projects)
+    mockIssueListByProject.mockResolvedValue([
+      makeIssue({ id: 'i1', number: 1, title: 'First Issue', description: 'Issue body' })
+    ])
+    mockTeamList.mockResolvedValue([{ id: 'm1', name: 'Alice' }])
+    mockProjectListMembers.mockResolvedValue([{ memberId: 'm1', roleInProject: 'owner' }])
+    setupApiMocks()
+
+    await renderIssuesAndPRsPage()
+
+    // Wait for issue to appear in list
+    await waitFor(
+      () => {
+        expect(screen.getByText(/First Issue/)).not.toBeNull()
+      },
+      { timeout: 5000 }
+    )
+
+    // Click the issue in the list
+    const issueButton = screen.getByText(/First Issue/).closest('button')
+    issueButton!.click()
+
+    // Detail panel should show the issue info (auto-switched to detail tab)
+    await waitFor(() => {
+      expect(screen.getByText('Issue body')).not.toBeNull()
+    })
   })
 })

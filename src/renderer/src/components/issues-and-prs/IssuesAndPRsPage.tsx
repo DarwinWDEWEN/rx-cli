@@ -4,6 +4,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { Issue, Project } from '../../../../shared/team-types'
 import { translate } from '@/i18n/i18n'
+import { IssueDetail } from './IssueDetail'
+import { IssueList } from './IssueList'
 import { ProjectOnboardingDialog } from './project-onboarding/ProjectOnboardingDialog'
 import { useActiveWorkspaceSource } from './project-onboarding/use-active-workspace-source'
 import { ProjectTeamPanel } from './ProjectTeamPanel'
@@ -43,78 +45,6 @@ function LoadingState(): React.JSX.Element {
   return (
     <div className="flex flex-1 items-center justify-center p-8">
       <Loader2 className="size-7 animate-spin text-muted-foreground" />
-    </div>
-  )
-}
-
-function EmptyIssueState(): React.JSX.Element {
-  return (
-    <div className="flex flex-1 items-center justify-center p-8">
-      <p className="text-sm text-muted-foreground">
-        {translate('auto.components.issuesAndPRs.IssuesAndPRsPage.noIssues', 'No issues yet')}
-      </p>
-    </div>
-  )
-}
-
-function IssueListItem({
-  issue,
-  isSelected,
-  onSelect
-}: {
-  issue: Issue
-  isSelected: boolean
-  onSelect: (issue: Issue) => void
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(issue)}
-      className={`flex w-full flex-col gap-1 rounded-md border p-3 text-left transition-colors ${
-        isSelected ? 'border-primary bg-accent/50' : 'hover:bg-muted/50'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">
-          #{issue.number} {issue.title}
-        </span>
-        <span
-          className={`text-xs ${issue.status === 'done' ? 'text-muted-foreground' : 'text-green-600'}`}
-        >
-          {issue.status === 'done'
-            ? translate('auto.components.issuesAndPRs.IssuesAndPRsPage.closed', 'Closed')
-            : translate('auto.components.issuesAndPRs.IssuesAndPRsPage.open', 'Open')}
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        <span className="rounded bg-muted px-1.5 py-0.5 text-xs capitalize">{issue.priority}</span>
-      </div>
-    </button>
-  )
-}
-
-function IssueDetailPlaceholder(): React.JSX.Element {
-  // Why: detail panel structure placeholder for future IssueDetail component
-  return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <ChevronRight className="size-4" />
-        <span>
-          {translate(
-            'auto.components.issuesAndPRs.IssuesAndPRsPage.selectIssueHint',
-            'Select an issue to view details'
-          )}
-        </span>
-      </div>
-      {/* Why: placeholder for future IssueDetail content (title, description, comments, timeline) */}
-      <div className="flex flex-1 items-center justify-center rounded-md border border-dashed p-8">
-        <p className="text-sm text-muted-foreground">
-          {translate(
-            'auto.components.issuesAndPRs.IssuesAndPRsPage.detailPlaceholder',
-            'Issue details coming soon'
-          )}
-        </p>
-      </div>
     </div>
   )
 }
@@ -231,6 +161,18 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
     [loadProjects]
   )
 
+  // Why: sync updated issue back to both selectedIssue and the list
+  const handleIssueUpdate = useCallback((updated: Issue) => {
+    setSelectedIssue(updated)
+    setIssues((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+  }, [])
+
+  // Why: selecting an issue auto-switches to detail panel so user sees issue info immediately
+  const handleSelectIssue = useCallback((issue: Issue) => {
+    setSelectedIssue(issue)
+    setDetailTab('detail')
+  }, [])
+
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
@@ -289,22 +231,12 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
             <div className="flex h-full gap-4">
               {/* Issue list (left column) */}
               <div className="flex w-1/2 flex-col gap-2">
-                {loadingIssues ? (
-                  <LoadingState />
-                ) : issues.length === 0 ? (
-                  <EmptyIssueState />
-                ) : (
-                  <div className="scrollbar-sleek flex flex-col gap-2 overflow-y-auto">
-                    {issues.map((issue) => (
-                      <IssueListItem
-                        key={issue.id}
-                        issue={issue}
-                        isSelected={selectedIssue?.id === issue.id}
-                        onSelect={setSelectedIssue}
-                      />
-                    ))}
-                  </div>
-                )}
+                <IssueList
+                  issues={issues}
+                  selectedIssue={selectedIssue}
+                  loading={loadingIssues}
+                  onSelect={handleSelectIssue}
+                />
               </div>
 
               {/* Detail panel (right column) */}
@@ -314,6 +246,10 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
                   <button
                     type="button"
                     onClick={() => setDetailTab('detail')}
+                    aria-label={translate(
+                      'auto.components.issuesAndPRs.IssuesAndPRsPage.detail',
+                      'Detail'
+                    )}
                     className={`rounded-md px-2 py-1 text-xs ${
                       detailTab === 'detail'
                         ? 'bg-accent text-accent-foreground'
@@ -336,7 +272,7 @@ export default function IssuesAndPRsPage(): React.JSX.Element {
                   </button>
                 </div>
                 {detailTab === 'detail' ? (
-                  <IssueDetailPlaceholder />
+                  <IssueDetail issue={selectedIssue} onUpdate={handleIssueUpdate} />
                 ) : (
                   <ProjectTeamPanel projectId={selectedProjectId!} />
                 )}
