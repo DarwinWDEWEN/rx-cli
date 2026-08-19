@@ -23,17 +23,20 @@ const { createProjectStore, __resetProjectStoreForTests } =
   await import('../runtime/collaboration/project-store')
 const { createIssueStore, __resetIssueStoreForTests } =
   await import('../runtime/collaboration/issue-store')
+const { getPrStore, __resetPrStoreForTests } = await import('../runtime/collaboration/pr-store')
 const { __resetCollaborationDbForTests, __setCollaborationDbPathForTests } = dbMod
 
 // Import the registration functions and call them directly.
 const teamHandlers = await import('./collaboration-teams')
 const projectHandlers = await import('./collaboration-projects')
 const issueHandlers = await import('./collaboration-issues')
+const prHandlers = await import('./collaboration-prs')
 
 // Register handlers directly — same as register-core-handlers does at startup.
 teamHandlers.registerCollaborationTeamHandlers()
 projectHandlers.registerCollaborationProjectHandlers()
 issueHandlers.registerCollaborationIssueHandlers()
+prHandlers.registerCollaborationPrHandlers()
 
 function invoke(channel: string, ...args: unknown[]) {
   const handler = fakeIpcMain.handlers.get(channel)
@@ -47,6 +50,9 @@ describe('collaboration IPC handlers', () => {
   let teamStore: ReturnType<typeof createTeamStore>
   let projectStore: ReturnType<typeof createProjectStore>
   let issueStore: ReturnType<typeof createIssueStore>
+  let prStore: ReturnType<typeof getPrStore>
+  let projectId: string
+  let ownerId: string
 
   beforeEach(() => {
     __resetCollaborationDbForTests()
@@ -54,10 +60,12 @@ describe('collaboration IPC handlers', () => {
     __resetTeamStoreForTests()
     __resetProjectStoreForTests()
     __resetIssueStoreForTests()
+    __resetPrStoreForTests()
     // Why: explicit deps ensure cross-store calls see the same instance.
     teamStore = createTeamStore()
     projectStore = createProjectStore({ teamStore })
     issueStore = createIssueStore({ projectStore, teamStore })
+    prStore = getPrStore()
   })
 
   describe('team.*', () => {
@@ -347,6 +355,109 @@ describe('collaboration IPC handlers', () => {
           ownerId
         })
       ).toThrow()
+    })
+  })
+
+  describe('pr.*', () => {
+    // Why: PR tests need a project with an owner for author validation
+    beforeEach(() => {
+      const owner = teamStore.create({
+        name: 'Alice',
+        role: 'lead',
+        agentType: 'claude',
+        agentModel: 'claude-sonnet',
+        personality: '',
+        responsibilities: [],
+        capabilities: [],
+        agentConfig: {},
+        skills: [],
+        defaultPrompt: '',
+        isActive: true,
+        hostType: 'local',
+        workspaceAccess: []
+      })
+      ownerId = owner.id
+
+      const project = projectStore.register({
+        name: 'Test Project',
+        hostId: 'local',
+        hostType: 'local',
+        repoPath: ':memory:'
+      })
+      projectId = project.id
+      projectStore.inviteMember(projectId, ownerId, 'owner')
+    })
+
+    it('pr:listByProject returns PRs for project', () => {
+      prStore.create({
+        projectId,
+        title: 'First PR',
+        sourceBranch: 'feat/1',
+        targetBranch: 'main',
+        authorId: ownerId
+      })
+
+      const list = invoke('pr:listByProject', { projectId }) as unknown[]
+      expect(list).toHaveLength(1)
+    })
+
+    it('pr:listByProject rejects empty projectId (Zod validation)', () => {
+      expect(() => invoke('pr:listByProject', { projectId: '' })).toThrow()
+    })
+
+    it('pr:get returns existing PR', () => {
+      const pr = prStore.create({
+        projectId,
+        title: 'Test PR',
+        sourceBranch: 'feat/x',
+        targetBranch: 'main',
+        authorId: ownerId
+      })
+
+      const result = invoke('pr:get', { id: pr.id }) as { id: string; title: string }
+      expect(result.id).toBe(pr.id)
+      expect(result.title).toBe('Test PR')
+    })
+
+    it('pr:get throws for unknown PR', () => {
+      expect(() => invoke('pr:get', { id: 'pr_missing' })).toThrow('PR not found')
+    })
+
+    it('pr:update changes status and refreshes updatedAt', async () => {
+      const pr = prStore.create({
+        projectId,
+        title: 'Original',
+        sourceBranch: 'feat/x',
+        targetBranch: 'main',
+        authorId: ownerId
+      })
+      const originalUpdatedAt = pr.updatedAt
+
+      // Why: small delay to ensure updatedAt changes (same-millisecond protection)
+      await new Promise((r) => setTimeout(r, 2))
+
+      const updated = invoke('pr:update', {
+        id: pr.id,
+        status: 'merged'
+      }) as { status: string; updatedAt: string }
+
+      expect(updated.status).toBe('merged')
+      expect(updated.updatedAt).not.toBe(originalUpdatedAt)
+    })
+
+    it('pr:update rejects empty id (Zod validation)', () => {
+      expect(() => invoke('pr:update', { id: '', status: 'merged' })).toThrow()
+    })
+
+    it('pr:update throws for unknown PR', () => {
+      expect(() => invoke('pr:update', { id: 'pr_missing', status: 'merged' })).toThrow(
+        'PR not found'
+      )
+    })
+
+    it('pr:nextPrNumber returns correct next value', () => {
+      const num = invoke('pr:nextPrNumber', { projectId }) as number
+      expect(num).toBe(1)
     })
   })
 })

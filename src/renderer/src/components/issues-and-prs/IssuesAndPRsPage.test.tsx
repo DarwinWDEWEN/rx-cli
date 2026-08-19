@@ -2,10 +2,11 @@
 
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Issue, Project } from '../../../../shared/team-types'
+import type { Issue, Project, PullRequest } from '../../../../shared/team-types'
 
 const mockProjectList = vi.fn<() => Promise<Project[]>>()
 const mockIssueListByProject = vi.fn<(args: { projectId: string }) => Promise<Issue[]>>()
+const mockPrListByProject = vi.fn<(args: { projectId: string }) => Promise<PullRequest[]>>()
 const mockProjectRegister =
   vi.fn<
     (args: {
@@ -76,6 +77,9 @@ async function renderIssuesAndPRsPage() {
 describe('IssuesAndPRsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPrListByProject.mockResolvedValue([])
+    mockProjectListMembers.mockResolvedValue([])
+    mockTeamList.mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -95,6 +99,7 @@ describe('IssuesAndPRsPage', () => {
           listMembers: mockProjectListMembers
         },
         issue: { listByProject: mockIssueListByProject },
+        pr: { listByProject: mockPrListByProject },
         team: { list: mockTeamList },
         git: {
           probeGit: mockProbeGit,
@@ -196,7 +201,7 @@ describe('IssuesAndPRsPage', () => {
     prsTab.click()
 
     await waitFor(() => {
-      expect(screen.getByText(/PR list coming soon/)).not.toBeNull()
+      expect(screen.getByText(/No pull requests yet/)).not.toBeNull()
     })
   })
 

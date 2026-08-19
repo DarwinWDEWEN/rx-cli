@@ -37,6 +37,7 @@ import type {
   Issue,
   Project as CollaborationProject,
   ProjectTeamMember,
+  PullRequest,
   TeamMemberRecord,
   UpdateTeamMemberInput
 } from '../shared/team-types'
@@ -2071,6 +2072,19 @@ const api = {
       }): Promise<Issue> => ipcRenderer.invoke('issue:update', args),
       nextIssueNumber: (args: { projectId: string }): Promise<number> =>
         ipcRenderer.invoke('issue:nextIssueNumber', args)
+    },
+    pr: {
+      listByProject: (args: { projectId: string }): Promise<PullRequest[]> =>
+        ipcRenderer.invoke('pr:listByProject', args),
+      get: (args: { id: string }): Promise<PullRequest> => ipcRenderer.invoke('pr:get', args),
+      update: (args: {
+        id: string
+        status?: 'open' | 'merged' | 'closed'
+        title?: string
+        description?: string
+      }): Promise<PullRequest> => ipcRenderer.invoke('pr:update', args),
+      nextPrNumber: (args: { projectId: string }): Promise<number> =>
+        ipcRenderer.invoke('pr:nextPrNumber', args)
     },
     git: {
       probeGit: (args: { path: string }): Promise<{ isGitRepo: boolean }> =>

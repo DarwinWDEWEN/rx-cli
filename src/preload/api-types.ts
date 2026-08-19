@@ -130,6 +130,7 @@ import type {
   Issue,
   Project as CollaborationProject,
   ProjectTeamMember,
+  PullRequest,
   TeamMemberRecord,
   UpdateTeamMemberInput
 } from '../shared/team-types'
@@ -2393,6 +2394,17 @@ export type PreloadApi = {
         ownerId?: string
       }) => Promise<Issue>
       nextIssueNumber: (args: { projectId: string }) => Promise<number>
+    }
+    pr: {
+      listByProject: (args: { projectId: string }) => Promise<PullRequest[]>
+      get: (args: { id: string }) => Promise<PullRequest>
+      update: (args: {
+        id: string
+        status?: 'open' | 'merged' | 'closed'
+        title?: string
+        description?: string
+      }) => Promise<PullRequest>
+      nextPrNumber: (args: { projectId: string }) => Promise<number>
     }
     git: {
       probeGit: (args: { path: string }) => Promise<{ isGitRepo: boolean }>
