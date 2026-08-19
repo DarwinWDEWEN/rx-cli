@@ -25,6 +25,8 @@ out/
 /build/
 release/
 native/**/.build/
+# Gradle build cache (e.g. mobile/packages/*/android/.gradle)
+.gradle/
 
 # pnpm
 .pnpm-store/
