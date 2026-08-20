@@ -14,11 +14,13 @@ const { __resetCollaborationDbForTests, __setCollaborationDbPathForTests } = dbM
 // ── Harness 类型 ──────────────────────────────────────────────────────────────
 
 import type {
-  HarnessExecutionContext,
   AgentRunEvent,
+  HarnessExecutionContext,
+  Issue,
+  IssueWorktree,
+  Project,
   TeamMemberRecord
 } from '../../../shared/team-types'
-import type { Issue, IssueWorktree, Project } from '../../../shared/team-types'
 
 // ── 被测模块 ──────────────────────────────────────────────────────────────────
 

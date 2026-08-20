@@ -16,9 +16,11 @@ const { __resetCollaborationDbForTests, __setCollaborationDbPathForTests } = dbM
 import type {
   AgentRunEvent,
   HarnessExecutionContext,
+  Issue,
+  IssueWorktree,
+  Project,
   TeamMemberRecord
 } from '../../../shared/team-types'
-import type { Issue, IssueWorktree, Project } from '../../../shared/team-types'
 import type { NormalizerResult } from './stream-event-normalizer'
 
 const { summarizeRun, postRunComment } = await import('./owner-collaboration')

@@ -148,8 +148,11 @@ function createIssueGitRefStore(): IssueGitRefStore {
       })
     },
 
+    // Why: per-member idempotent — query by (issue_id, ref_name) to guarantee
+    // each member gets their own ref (refName=worktree/${memberId}), not the first member's
     ensureWorktreeRef(issueId: string, memberId: string): IssueGitRef {
-      const existing = stmts.selectByIssueAndRole.get(issueId, 'member') as
+      const refName = `worktree/${memberId}`
+      const existing = stmts.selectByIssueAndRefName.get(issueId, refName) as
         | IssueGitRefRow
         | undefined
       if (existing) {
@@ -157,7 +160,7 @@ function createIssueGitRefStore(): IssueGitRefStore {
       }
       return this.create({
         issueId,
-        refName: `worktree/${memberId}`,
+        refName,
         refRole: 'member',
         memberId,
         purpose: 'member-worktree'

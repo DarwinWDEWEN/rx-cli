@@ -4526,7 +4526,9 @@
           "0ccba862b8": "Open GitHub tasks",
           "fee535205b": "Tasks",
           "d599269755": "Hide from sidebar",
-          "artifacts": "Artifacts"
+          "artifacts": "Artifacts",
+          "teams": "Teams",
+          "issuesAndPRs": "Issues and PRs"
         },
         "SidebarRepositoryFilterSection": {
           "d3a9c4cea1": "Clear",
@@ -15104,6 +15106,123 @@
           "openLink": "Open link",
           "updating": "Updating…",
           "update": "Update shared content"
+        }
+      },
+      "issuesAndPRs": {
+        "IssueDetail": {
+          "open": "Open",
+          "closed": "Closed",
+          "selectPrompt": "Select an issue to view details",
+          "updateError": "Could not update issue",
+          "unassigned": "Unassigned",
+          "created": "Created",
+          "updated": "Updated",
+          "priority": "Priority",
+          "description": "Description",
+          "noDescription": "No description provided",
+          "commentsPlaceholder": "Comments coming soon"
+        },
+        "IssueList": {
+          "noIssues": "No issues yet",
+          "closed": "Closed",
+          "open": "Open"
+        },
+        "IssuesAndPRsPage": {
+          "noProjects": "No projects yet",
+          "noProjectsHint": "Register a project to start tracking issues and PRs.",
+          "addProject": "Add project",
+          "loadProjectsError": "Could not load projects",
+          "loadIssuesError": "Could not load issues",
+          "loadPrsError": "Could not load pull requests",
+          "title": "Issues and PRs",
+          "issues": "Issues",
+          "prs": "PRs",
+          "detail": "Detail",
+          "team": "Team"
+        },
+        "PRDetail": {
+          "selectPrompt": "Select a pull request to view details",
+          "updateError": "Could not update pull request",
+          "unknownAuthor": "Unknown member",
+          "created": "Created",
+          "updated": "Updated",
+          "status": "Status",
+          "reviewers": "Reviewers",
+          "unknownMember": "Unknown",
+          "noReviewers": "No reviewers",
+          "approvals": "Approvals",
+          "description": "Description",
+          "noDescription": "No description provided",
+          "commentsPlaceholder": "Comments coming soon"
+        },
+        "PRList": {
+          "noPRs": "No pull requests yet"
+        },
+        "ProjectTeamPanel": {
+          "noMembers": "No team members in this project",
+          "owner": "Owner",
+          "member": "Member",
+          "makeOwner": "Make owner",
+          "remove": "Remove",
+          "loadError": "Could not load project team",
+          "invited": "Member invited",
+          "removed": "Member removed",
+          "ownerChanged": "Owner changed",
+          "title": "Project Team",
+          "invite": "Invite",
+          "inviteTitle": "Invite Member",
+          "inviteDescription": "Select a team member to invite to this project.",
+          "selectMember": "Select a member",
+          "cancel": "Cancel"
+        },
+        "projectOnboarding": {
+          "pathRequired": "Please select a folder",
+          "nameRequired": "Project name is required",
+          "registerError": "Failed to register project",
+          "initGitError": "Failed to initialize git repository",
+          "title": "Add Project",
+          "folder": "Project folder",
+          "next": "Next",
+          "projectName": "Project name",
+          "defaultBranch": "Default branch",
+          "back": "Back",
+          "registering": "Registering...",
+          "register": "Register",
+          "notGitRepo": "This folder is not a git repository.",
+          "initGitPrompt": "Would you like to initialize git here?",
+          "skip": "Skip",
+          "initGit": "Initialize git",
+          "complete": "Project registered successfully!",
+          "done": "Done"
+        }
+      },
+      "teams": {
+        "TeamsPage": {
+          "editMember": "Edit member",
+          "createMember": "Create member",
+          "name": "Name",
+          "namePlaceholder": "Member name",
+          "role": "Role",
+          "rolePlaceholder": "e.g. Developer, Reviewer",
+          "agentType": "Agent",
+          "model": "Model",
+          "defaultPrompt": "Default prompt",
+          "promptPlaceholder": "Optional default prompt for this member...",
+          "skills": "Skills",
+          "skillsPlaceholder": "Comma-separated: react, typescript, testing",
+          "isActive": "Active",
+          "cancel": "Cancel",
+          "save": "Save",
+          "create": "Create",
+          "emptyTitle": "No team members yet",
+          "emptyHint": "Create your first team member to get started.",
+          "addMember": "Add member",
+          "active": "Active",
+          "inactive": "Inactive",
+          "prompt": "Prompt",
+          "loadError": "Could not load team members",
+          "saveError": "Could not save team member",
+          "title": "Teams"
         }
       }
     },

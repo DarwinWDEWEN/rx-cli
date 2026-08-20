@@ -12,8 +12,7 @@ const { createIssueCommentStore, __resetIssueCommentStoreForTests } =
   await import('./issue-comment-store')
 const { __resetCollaborationDbForTests, __setCollaborationDbPathForTests } = dbMod
 
-import type { TeamMemberRecord } from '../../../shared/team-types'
-import type { Issue, Project } from '../../../shared/team-types'
+import type { Issue, Project, TeamMemberRecord } from '../../../shared/team-types'
 
 describe('IssueCommentStore', () => {
   let teamStore: ReturnType<typeof createTeamStore>

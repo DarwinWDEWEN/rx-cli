@@ -66,7 +66,7 @@ async function setupTestIssue() {
   })
 
   const { getIssueGitRefStore: freshGetStore } = await import('./issue-git-ref-store')
-  return { store: freshGetStore(), issue, owner }
+  return { store: freshGetStore(), issue, owner, teamStore, projectStore }
 }
 
 describe('issue git ref store', () => {
@@ -169,6 +169,38 @@ describe('issue git ref store', () => {
     expect(ref1.id).toBe(ref2.id)
     expect(ref1.refRole).toBe('member')
     expect(store.listByIssue(issue.id)).toHaveLength(1)
+  })
+
+  it('ensureWorktreeRef is per-member — different members get different refs', () => {
+    const { store, issue, owner, projectStore, teamStore } = context
+    const other = teamStore.create({
+      name: 'Bob',
+      role: 'dev',
+      personality: '',
+      responsibilities: [],
+      capabilities: [],
+      agentType: 'claude',
+      agentModel: 'claude-sonnet',
+      agentConfig: {},
+      skills: [],
+      defaultPrompt: '',
+      isActive: true,
+      hostType: 'local',
+      workspaceAccess: []
+    })
+    projectStore.inviteMember(issue.projectId, other.id, 'member')
+
+    const ref1 = store.ensureWorktreeRef(issue.id, owner.id)
+    const ref2 = store.ensureWorktreeRef(issue.id, other.id)
+
+    expect(ref1.refName).toBe(`worktree/${owner.id}`)
+    expect(ref2.refName).toBe(`worktree/${other.id}`)
+    expect(ref1.memberId).toBe(owner.id)
+    expect(ref2.memberId).toBe(other.id)
+    expect(ref1.id).not.toBe(ref2.id)
+
+    const refs = store.listByIssue(issue.id)
+    expect(refs).toHaveLength(2)
   })
 
   it('getPreferred returns most recent ref for role', () => {

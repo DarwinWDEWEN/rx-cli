@@ -2,7 +2,7 @@ import type { CommandHandler } from '../dispatch'
 import { printResult } from '../format'
 import { RuntimeClientError } from '../runtime-client'
 import { getOptionalStringFlag, getRequiredStringFlag } from '../flags'
-import type { Issue, IssueComment } from '../../../shared/team-types'
+import type { Issue, IssueComment, IssuePriority, IssueStatus } from '../../../shared/team-types'
 
 // Why: format functions for human-readable output (non-JSON mode)
 function formatCommentAdded(comment: IssueComment): string {
@@ -60,8 +60,8 @@ export const COLLABORATION_HANDLERS: Record<string, CommandHandler> = {
     // Why: only pass provided flags to the RPC method — undefined means "no change"
     const title = getOptionalStringFlag(flags, 'title')
     const description = getOptionalStringFlag(flags, 'description')
-    const priority = getOptionalStringFlag(flags, 'priority') as Issue['priority'] | undefined
-    const status = getOptionalStringFlag(flags, 'status') as Issue['status'] | undefined
+    const priority = getOptionalStringFlag(flags, 'priority') as IssuePriority
+    const status = getOptionalStringFlag(flags, 'status') as IssueStatus
     const worklineState = getOptionalStringFlag(flags, 'workline-state')
 
     const response = await client.call<Issue>('collaboration.issueUpdate', {

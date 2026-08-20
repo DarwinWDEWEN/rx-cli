@@ -68,5 +68,21 @@
     "text": "ghostty",
     "dynamic": false,
     "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/issues-and-prs/project-onboarding/ProjectOnboardingDialog.tsx",
+    "kind": "jsx-attribute:placeholder",
+    "text": "/path/to/project",
+    "dynamic": false,
+    "count": 1,
+    "reviewed": "filesystem path hint shown in a code-input placeholder; intentionally not translated"
+  },
+  {
+    "filePath": "src/renderer/src/components/issues-and-prs/project-onboarding/ProjectOnboardingDialog.tsx",
+    "kind": "jsx-attribute:placeholder",
+    "text": "main",
+    "dynamic": false,
+    "count": 1,
+    "reviewed": "default branch name placeholder; intentionally not translated"
   }
 ]
